@@ -17,9 +17,10 @@ import { createLogger } from '../src/lib/logger.js';
 import { MemoryStorage } from '../src/storage/index.js';
 import { defaultSummaryJson } from './helpers.js';
 import { inferenceHandler, startMock } from './mock-dashscope.js';
+import { disposableDatabaseUrl } from './database-safety.js';
 
 const PORT = Number(process.env.E2E_PORT ?? 8799);
-const DB = process.env.E2E_DATABASE_URL ?? 'postgres://meetfolio:meetfolio@127.0.0.1:5432/meetfolio_e2e';
+const DB = disposableDatabaseUrl(process.env.E2E_DATABASE_URL, 'meetfolio_e2e');
 
 // 1) The database is created fresh for every run.
 const admin = createDb(DB.replace(/\/[^/]+$/, '/postgres'), { max: 1 });

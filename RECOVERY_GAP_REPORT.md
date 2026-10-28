@@ -1,5 +1,20 @@
 # Meetfolio v0.1 → v0.6.0｜更新历程、源码差异与增量重建审计
 
+## Phase 2 工程状态（2026-10-28）
+
+以下结果是 Windows、本地 Node 22.23.4 / npm 11.19.0 的检查，不能替代 GitHub Actions 或真实桌面验收：
+
+| 检查 | 状态与范围 |
+| --- | --- |
+| `npm ci`、`npm run verify` | 通过；npm 11 提示部分依赖安装脚本未经批准，原生打包未验证 |
+| Web / Desktop 单元测试 | 分别 30 / 30、11 / 11 通过 |
+| Desktop Playwright | 10 / 10 通过；包含浏览器和模拟桌面桥接，不是真实 X-ASR / 麦克风验收 |
+| Server PostgreSQL 测试、历史 Web E2E | 本机阻塞：PostgreSQL 不可用，Docker 存储 I/O 错误；CI 已配置隔离 PostgreSQL，结果须以实际运行记录为准 |
+| 生产依赖审计 | 失败：4 high、2 moderate；部分修复需要破坏性依赖升级，需单独评估兼容性 |
+| Windows 安装器、macOS、真实设备 | 未运行 |
+
+测试数据库的重建操作现在要求显式配置受限的本机测试库及确认变量，详见 [工程工作流](docs/engineering/CODEX_WORKFLOW.md)。仓库历史编译参考的公开再分发权利和第三方许可完整性仍需人工核实。下文是原 Stage 1 审计记录，其历史测试状态不是 Phase 2 的实时结果。
+
 **审计日期：2026-10-26**  
 **资料来源：** 用户上传 `meetfolio_2e0bbdd_continued_modified_source(3).zip`，此前开发对话与发布记录；这次没有收到 v0.6.0 的安装包二进制，也没有收到其完整源码。  
 **结论：可以增量重建，但“可重建”不等于“已经恢复到 0.6.0 逐字节同版”。**

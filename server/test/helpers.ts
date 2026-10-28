@@ -12,8 +12,7 @@ import { createLogger } from '../src/lib/logger.js';
 import type { AppContext } from '../src/lib/context.js';
 import { MemoryStorage } from '../src/storage/index.js';
 import type { Clock } from '../src/lib/clock.js';
-
-export const TEST_DB_URL = process.env.TEST_DATABASE_URL ?? 'postgres://meetfolio:meetfolio@127.0.0.1:5432/meetfolio_test';
+import { disposableDatabaseUrl } from './database-safety.js';
 
 export class FakeLlm implements LlmClient {
   configured = true;
@@ -65,6 +64,7 @@ export interface TestEnv {
 }
 
 export async function makeEnv(opts: { env?: Record<string, string>; asr?: Partial<AsrProviderFactory> & { liveProvider?: AsrProvider }; clock?: Clock; rateLimit?: boolean } = {}): Promise<TestEnv> {
+  const TEST_DB_URL = disposableDatabaseUrl(process.env.TEST_DATABASE_URL, 'meetfolio_test');
   const config = loadConfig({
     NODE_ENV: 'test',
     DATABASE_URL: TEST_DB_URL,

@@ -1,6 +1,6 @@
 # Meetfolio — recovered development workspace
 
-> **RECOVERY SNAPSHOT — NOT VERIFIED AS v0.6.0**  
+> **RECOVERY SNAPSHOT — NOT VERIFIED AS v0.6.0**
 > This repository combines an editable **v0.1-era, Stage 1 reconstruction** with reference assets extracted from **v0.5.1 Windows** and an **experimental English interface overlay**. It is not a copy of the original v0.6.0 source release, and no original Git history is included.
 
 ## What can be edited?
@@ -21,16 +21,14 @@ Do not label this repository or its packages as a complete, tested v0.6.0 releas
 
 ## Developer checks
 
-Prerequisite: Node.js 22 and npm. Build and install are **not yet independently validated** for this combined recovery archive.
+Prerequisite: Node.js 22 (exact version in `.nvmrc`) and npm. See [engineering workflow](docs/engineering/CODEX_WORKFLOW.md) and [agent rules](AGENTS.md) for safe database setup, CI, and native acceptance limits.
 
 ```bash
 npm ci
-npm run typecheck
-npm test
-npm run build:desktop
+npm run verify
 ```
 
-The browser preview is not proof that the native X-ASR engine works. Do not use a recovery build with real interview data before microphone, storage, export, packaging and privacy tests have passed.
+Server database tests and browser tests are separate because they require disposable infrastructure. The browser preview is not proof that the native X-ASR engine works. Do not use a recovery build with real interview data before microphone, storage, export, packaging and privacy tests have passed.
 
 ## Getting started / re-upload
 

@@ -102,7 +102,7 @@ export function LiveInterview({
       {!i.synthetic && (
         <div className="dt-capture-info">
           <span>
-            Microphone: 
+            Microphone:{' '}
             {
               {
                 unknown: 'Not requested',

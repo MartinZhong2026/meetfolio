@@ -1,5 +1,7 @@
 # Testing
 
+> Recovery update: the commands and test counts below describe the historical baseline. Before running any database-backed test, follow the current [engineering workflow](engineering/CODEX_WORKFLOW.md). There is no implicit test database URL: both destructive harnesses require an explicit disposable loopback target and reset acknowledgement. Desktop browser tests and native hardware acceptance are separate.
+
 No test makes a paid API call. External services are replaced by local mocks that speak the real wire protocols.
 
 ```bash
@@ -7,8 +9,7 @@ npm test            # server (84) + web (25) unit/integration tests
 npm run test:e2e    # Playwright: 10 browser tests × 3 viewports (1440 / 1024 / 390) = 30
 ```
 
-Prerequisites: PostgreSQL reachable at `TEST_DATABASE_URL` (default
-`postgres://meetfolio:meetfolio@127.0.0.1:5432/meetfolio_test`). The server suite drops/recreates the `public` schema of that
+Prerequisites: an explicitly configured disposable PostgreSQL database at `TEST_DATABASE_URL`. The server suite drops/recreates the `public` schema of that
 database and applies the real migrations. The browser harness creates a throw-away `meetfolio_e2e` database (the role needs
 `CREATEDB`). Browser tests use Chromium with a fake microphone device (`--use-fake-device-for-media-stream`); set
 `PW_CHROMIUM` to use a specific binary.

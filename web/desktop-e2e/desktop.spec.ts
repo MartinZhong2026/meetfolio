@@ -2,19 +2,19 @@ import { expect, test, type Page } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import fs from 'node:fs/promises';
 const saved = async (page: Page) =>
-  expect(page.getByTestId('desktop-save-status')).toHaveText('已保存到本机');
+  expect(page.getByTestId('desktop-save-status')).toHaveText('Saved locally');
 async function synthetic(page: Page) {
   await page.goto('/');
-  await page.getByRole('button', { name: '载入虚构示例' }).click();
+  await page.getByRole('button', { name: 'Load fictional demo' }).click();
   await saved(page);
 }
-async function shot(page: Page, name: string, width: number) {
+async function shot(page: Page, name: string, info: import('@playwright/test').TestInfo) {
   await page.evaluate(() => {
     (document.activeElement as HTMLElement)?.blur();
     window.scrollTo(0, 0);
   });
   await page.screenshot({
-    path: `../docs/desktop-screenshots/${name}-${width}.png`,
+    path: info.outputPath(`${name}.png`),
     fullPage: false,
   });
 }
@@ -49,18 +49,18 @@ test('reference stages, offline notes and evidence, honest model state, edited e
   });
   await synthetic(page);
   await expect(
-    page.getByText('普通浏览器未连接本地语音引擎。', { exact: false }),
+    page.getByText('Download or import the free speech model in the installed desktop application.', { exact: false }),
   ).toBeVisible();
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
-  await shot(page, 'prepare', info.project.use.viewport!.width);
-  await page.getByRole('button', { name: '进入实时访谈' }).last().click();
+  await shot(page, 'prepare', info);
+  await page.getByRole('button', { name: 'Start live interview' }).last().click();
   const columns = page.getByTestId('desktop-columns');
-  const guide = columns.getByRole('region', { name: '访谈提纲', exact: true });
+  const guide = columns.getByRole('region', { name: 'Interview guide', exact: true });
   const transcript = columns.getByRole('region', {
-    name: '实时转录',
+    name: 'Live transcription',
     exact: true,
   });
-  const notes = columns.getByRole('region', { name: '研究笔记', exact: true });
+  const notes = columns.getByRole('region', { name: 'Research notes', exact: true });
   const boxes = await Promise.all(
     [guide, transcript, notes].map((p) => p.boundingBox()),
   );
@@ -69,50 +69,50 @@ test('reference stages, offline notes and evidence, honest model state, edited e
   expect(boxes[1]!.width).toBeGreaterThan(boxes[2]!.width);
   expect(boxes[1]!.x + boxes[1]!.width).toBeLessThan(boxes[2]!.x);
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
-  await shot(page, 'live', info.project.use.viewport!.width);
-  await page.getByRole('button', { name: '模拟开始', exact: true }).click();
+  await shot(page, 'live', info);
+  await page.getByRole('button', { name: 'Start simulation', exact: true }).click();
   await expect(page.getByTestId('desktop-recording-status')).toHaveText(
-    'DEMO · 模拟展示中',
+    'DEMO · Demo running',
   );
-  await page.getByRole('button', { name: '模拟暂停', exact: true }).click();
+  await page.getByRole('button', { name: 'Pause simulation', exact: true }).click();
   await page
-    .getByLabel('新研究笔记', { exact: true })
+    .getByLabel('New research note', { exact: true })
     .fill('本机研究观察：需要追加访谈。');
   await page
-    .getByRole('combobox', { name: '笔记类别', exact: true })
+    .getByRole('combobox', { name: 'Note category', exact: true })
     .selectOption('followup');
-  await page.getByRole('button', { name: '保存这条笔记' }).click();
+  await page.getByRole('button', { name: 'Save note' }).click();
   await saved(page);
-  await page.getByRole('button', { name: '编辑片段 2', exact: true }).click();
-  await page.getByLabel('修订片段 2').fill('人工校对后的合成陈述。');
-  await page.getByRole('button', { name: '保存修订' }).click();
-  await page.getByText('对照原始文字', { exact: true }).click();
+  await page.getByRole('button', { name: 'Edit segment 2', exact: true }).click();
+  await page.getByRole('textbox', { name: 'Edit segment 2' }).fill('人工校对后的合成陈述。');
+  await page.getByRole('button', { name: 'Save edit' }).click();
+  await page.getByText('Compare original text', { exact: true }).click();
   await expect(
     page
-      .getByText('基本上六点就要起来，他有时候不太愿意吃药。', { exact: false })
+      .getByText('I usually get up at six. He sometimes resists his medicine', { exact: false })
       .first(),
   ).toBeVisible();
-  await page.getByRole('button', { name: '结束并复核' }).first().click();
-  await page.getByRole('button', { name: '来源 00:18:14 ↗' }).click();
+  await page.getByRole('button', { name: 'Finish & review' }).first().click();
+  await page.getByRole('button', { name: 'Source 00:18:14 ↗' }).click();
   await expect(page.locator('#review-seg-2')).toBeFocused();
   await page
-    .getByLabel('研究者复核说明（非 AI 生成）')
+    .getByLabel('Researcher review notes')
     .fill('已核对，仍需后续验证。');
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
-  await shot(page, 'review', info.project.use.viewport!.width);
+  await shot(page, 'review', info);
   const download = page.waitForEvent('download');
   await page
-    .getByRole('button', { name: '导出 Markdown', exact: true })
+    .getByRole('button', { name: 'Export Markdown', exact: true })
     .click();
   const md = await fs.readFile((await (await download).path())!, 'utf8');
   expect(md).toContain('DEMO / synthetic');
   expect(md).toContain('本机研究观察');
-  expect(md).toContain('追问问题');
+  expect(md).toContain('Follow-up question');
   expect(md).toContain('人工校对后的合成陈述');
-  expect(md).toContain('原始版本：基本上六点');
+  expect(md).toContain('Original text: I usually get up at six');
   expect(md).toContain('#seg-2');
   const docx = page.waitForEvent('download');
-  await page.getByRole('button', { name: '导出 DOCX', exact: true }).click();
+  await page.getByRole('button', { name: 'Export DOCX', exact: true }).click();
   const data = await fs.readFile((await (await docx).path())!);
   expect(data.subarray(0, 2).toString()).toBe('PK');
   await saved(page);
@@ -124,11 +124,11 @@ test('reference stages, offline notes and evidence, honest model state, edited e
     .toBe(true);
   await context.setOffline(true);
   await page.reload();
-  await expect(page.getByLabel('研究者复核说明（非 AI 生成）')).toHaveValue(
+  await expect(page.getByLabel('Researcher review notes')).toHaveValue(
     '已核对，仍需后续验证。',
   );
   await expect(
-    page.getByText('离线 · 本机工作区', { exact: true }),
+    page.getByText('Offline · Local workspace', { exact: true }),
   ).toBeVisible();
   expect(
     await page.evaluate(
@@ -158,31 +158,31 @@ test('unsaved data, retry, backup restoration copies and two-tab safety', async 
   await page.evaluate(() => {
     (window as unknown as { failSave: boolean }).failSave = true;
   });
-  await page.getByLabel('访谈主题', { exact: true }).fill('未保存测试');
-  await expect(page.getByRole('alert')).toContainText('尚未保存');
-  await shot(page, 'unsaved', info.project.use.viewport!.width);
+  await page.getByLabel('Interview topic', { exact: true }).fill('未保存测试');
+  await expect(page.getByRole('alert')).toContainText('Unsaved: local storage is unavailable or full');
+  await shot(page, 'unsaved', info);
   const backup = page.waitForEvent('download');
-  await page.getByRole('button', { name: '立即导出 JSON 备份' }).click();
+  await page.getByRole('button', { name: 'Export JSON backup now' }).click();
   const file = await (await backup).path();
   await page.evaluate(() => {
     (window as unknown as { failSave: boolean }).failSave = false;
   });
-  await page.getByRole('button', { name: '重试保存', exact: true }).click();
+  await page.getByRole('button', { name: 'Retry saving', exact: true }).click();
   await saved(page);
   const duplicate = await context.newPage();
   await duplicate.goto('/');
   await expect(
-    duplicate.getByRole('heading', { name: '请在一个窗口中编辑' }),
+    duplicate.getByRole('heading', { name: 'Use one window for editing' }),
   ).toBeVisible();
   await duplicate.close();
-  await page.getByRole('button', { name: '模型与设置', exact: true }).click();
-  await page.getByLabel('导入本机 JSON 备份').setInputFiles(file!);
+  await page.getByRole('button', { name: 'Model & Settings', exact: true }).click();
+  await page.getByLabel('Import local JSON backup').setInputFiles(file!);
   await expect(page.getByRole('status').last()).toContainText(
-    '备份已恢复为新副本',
+    'Backup restored as copies',
   );
-  await page.getByRole('button', { name: '我的访谈', exact: true }).click();
-  await expect(page.getByLabel('访谈主题', { exact: true })).toHaveValue(
-    '未保存测试（恢复副本）',
+  await page.getByRole('button', { name: 'My interviews', exact: true }).click();
+  await expect(page.getByLabel('Interview topic', { exact: true })).toHaveValue(
+    '未保存测试 (restored copy)',
   );
 });
 
@@ -257,28 +257,28 @@ test('native bridge contract: download, permission denial, interruption and relo
 }, info) => {
   await runtime(page, 'download');
   await page.goto('/');
-  await page.getByLabel('访谈主题', { exact: true }).fill('本机运行时状态测试');
+  await page.getByLabel('Interview topic', { exact: true }).fill('本机运行时状态测试');
   await page
-    .getByRole('checkbox', { name: '已取得参与者的录音知情同意' })
+    .getByRole('checkbox', { name: 'I have obtained informed recording consent from the participant (required)' })
     .check();
-  await page.getByRole('button', { name: '下载免费语音模型', exact: true }).click();
+  await page.getByRole('button', { name: 'Download free speech model', exact: true }).click();
   await expect(
-    page.getByRole('progressbar', { name: '模型下载进度' }),
+    page.getByRole('progressbar', { name: 'Model download progress' }),
   ).toHaveAttribute('value', '50');
-  await shot(page, 'model-download', info.project.use.viewport!.width);
+  await shot(page, 'model-download', info);
   await expect(
-    page.getByText('X-ASR Ready · 离线', { exact: true }),
+    page.getByText('X-ASR Ready · Offline', { exact: true }),
   ).toBeVisible();
-  await page.getByRole('button', { name: '进入实时访谈' }).last().click();
-  await page.getByRole('button', { name: '开始本地转录', exact: true }).click();
+  await page.getByRole('button', { name: 'Start live interview' }).last().click();
+  await page.getByRole('button', { name: 'Start transcription', exact: true }).click();
   await expect(
-    page.getByText('麦克风：权限被拒绝', { exact: false }),
+    page.getByText('Microphone: Permission denied', { exact: false }),
   ).toBeVisible();
-  await shot(page, 'permission-denied', info.project.use.viewport!.width);
+  await shot(page, 'permission-denied', info);
   await page.evaluate(() => {
     (window as unknown as { allowMic: boolean }).allowMic = true;
   });
-  await page.getByRole('button', { name: '开始本地转录', exact: true }).click();
+  await page.getByRole('button', { name: 'Start transcription', exact: true }).click();
   await expect(
     page.getByText('本地运行时测试片段（模拟引擎）', { exact: true }),
   ).toBeVisible();
@@ -286,24 +286,24 @@ test('native bridge contract: download, permission denial, interruption and relo
     (window as unknown as { interrupt: () => void }).interrupt();
   });
   await expect(page.getByTestId('desktop-recording-status')).toHaveText(
-    '记录已中断',
+    'Recording interrupted',
   );
-  await shot(page, 'interrupted', info.project.use.viewport!.width);
+  await shot(page, 'interrupted', info);
   await page
-    .getByRole('button', { name: '重新确认并继续', exact: true })
+    .getByRole('button', { name: 'Check device and resume', exact: true })
     .click();
   await expect(page.getByTestId('desktop-recording-status')).toHaveText(
-    '本地转录中',
+    'Transcribing locally',
   );
   // Session-relative native times are offset and IDs are namespaced across resume.
   await expect(page.locator('#seg-2 time')).toHaveText('00:00:01');
   await saved(page);
   await page.reload();
   await expect(
-    page.getByText('上次记录因页面关闭或刷新中断。', { exact: false }),
+    page.getByText('The previous session was interrupted by reload or exit.', { exact: false }),
   ).toBeVisible();
   await expect(page.getByTestId('desktop-recording-status')).toHaveText(
-    '记录已中断',
+    'Recording interrupted',
   );
 });
 
@@ -312,22 +312,22 @@ test('model readiness is rechecked, mobile layout and explicit no-runtime record
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/');
-  await page.getByLabel('访谈主题', { exact: true }).fill('手机上的手工研究');
-  await page.getByRole('button', { name: '进入实时访谈' }).last().click();
+  await page.getByLabel('Interview topic', { exact: true }).fill('手机上的手工研究');
+  await page.getByRole('button', { name: 'Start live interview' }).last().click();
   await expect(
-    page.getByRole('button', { name: '开始本地转录', exact: true }),
+    page.getByRole('button', { name: 'Start transcription', exact: true }),
   ).toBeDisabled();
-  await page.getByText('添加手工补记（非语音识别）', { exact: true }).click();
+  await page.getByText('Add manual segment (not ASR)', { exact: true }).click();
   await page
-    .getByLabel('手工补记（不作为语音识别结果）')
+    .getByLabel('Manual entry (not ASR output)')
     .fill('这是手工补记，不是语音识别');
   await saved(page);
   await page.reload();
-  await page.getByText('添加手工补记（非语音识别）', { exact: true }).click();
-  await expect(page.getByLabel('手工补记（不作为语音识别结果）')).toHaveValue(
+  await page.getByText('Add manual segment (not ASR)', { exact: true }).click();
+  await expect(page.getByLabel('Manual entry (not ASR output)')).toHaveValue(
     '这是手工补记，不是语音识别',
   );
-  await page.getByRole('button', { name: '添加手工片段' }).click();
+  await page.getByRole('button', { name: 'Add manual segment', exact: true }).click();
   await expect(
     page.getByText('这是手工补记，不是语音识别', { exact: true }),
   ).toBeVisible();
@@ -343,26 +343,26 @@ test('cached ready badge cannot bypass a runtime model revocation', async ({
 }) => {
   await runtime(page, 'installed');
   await page.goto('/');
-  await page.getByLabel('访谈主题', { exact: true }).fill('模型状态复核');
+  await page.getByLabel('Interview topic', { exact: true }).fill('模型状态复核');
   await page
-    .getByRole('checkbox', { name: '已取得参与者的录音知情同意' })
+    .getByRole('checkbox', { name: 'I have obtained informed recording consent from the participant (required)' })
     .check();
   await expect(
-    page.getByText('X-ASR Ready · 离线', { exact: true }),
+    page.getByText('X-ASR Ready · Offline', { exact: true }),
   ).toBeVisible();
-  await page.getByRole('button', { name: '进入实时访谈' }).last().click();
+  await page.getByRole('button', { name: 'Start live interview' }).last().click();
   await page.evaluate(() => {
     (window as unknown as { revokeModel: boolean }).revokeModel = true;
   });
-  await page.getByRole('button', { name: '开始本地转录', exact: true }).click();
+  await page.getByRole('button', { name: 'Start transcription', exact: true }).click();
   await expect(
-    page.getByRole('button', { name: '开始本地转录', exact: true }),
+    page.getByRole('button', { name: 'Start transcription', exact: true }),
   ).toHaveCount(0);
   await expect(
-    page.getByRole('button', { name: '重新确认并继续', exact: true }),
+    page.getByRole('button', { name: 'Check device and resume', exact: true }),
   ).toBeDisabled();
   await expect(
-    page.getByText('麦克风：尚未请求', { exact: true }),
+    page.getByText('Microphone: Not requested', { exact: true }),
   ).toBeVisible();
   await expect(
     page.getByText('本地运行时测试片段（模拟引擎）', { exact: true }),
