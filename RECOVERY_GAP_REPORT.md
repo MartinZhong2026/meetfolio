@@ -15,6 +15,8 @@
 
 GitHub Actions run `40718812762`（提交 `2c9fc29`）中，隔离 PostgreSQL 的 119 项服务端测试连续两轮通过，Linux Desktop 浏览器作业通过；生产依赖审计失败。历史 Web E2E 为 30 通过、3 失败，失败均为桌面入口的过期中文选择器。该入口选择器随后已更新，并在 Windows 本地构建预览下通过 3 个视口；修正后的完整 Linux CI 仍需推送并重新验证。
 
+安全修复候选将服务端 `@fastify/static`、`drizzle-orm`、`nodemailer` 和 `zod` 更新至审计建议版本；本地高危级别审计通过，但仍报告 2 项中危 React Router 问题。此变更含主要版本升级，必须以对应提交的隔离数据库、Web E2E 和实际 GitHub Actions 结果验证兼容性，不能以旧提交的通过结果替代。
+
 测试数据库的重建操作现在要求显式配置受限的本机测试库及确认变量，详见 [工程工作流](docs/engineering/CODEX_WORKFLOW.md)。仓库历史编译参考的公开再分发权利和第三方许可完整性仍需人工核实。下文是原 Stage 1 审计记录，其历史测试状态不是 Phase 2 的实时结果。
 
 **审计日期：2026-10-26**  
