@@ -7,12 +7,12 @@ test('desktop entry works without an account or backend API and preserves local 
     await route.abort();
   });
   await page.goto('/desktop');
-  await expect(page.getByRole('heading', { name: '访谈准备' })).toBeVisible();
-  await page.getByLabel('访谈主题', { exact: true }).fill('无需账号的本机访谈');
-  await page.getByRole('button', { name: '进入实时访谈' }).last().click();
-  await page.getByLabel('新研究笔记', { exact: true }).fill('本机草稿，不经过服务器');
-  await expect(page.getByTestId('desktop-save-status')).toHaveText('已保存到本机');
+  await expect(page.getByRole('heading', { name: 'Preparation' })).toBeVisible();
+  await page.getByLabel('Interview topic', { exact: true }).fill('无需账号的本机访谈');
+  await page.getByRole('button', { name: 'Start live interview' }).last().click();
+  await page.getByLabel('New research note', { exact: true }).fill('本机草稿，不经过服务器');
+  await expect(page.getByTestId('desktop-save-status')).toHaveText('Saved locally');
   await page.reload();
-  await expect(page.getByLabel('新研究笔记', { exact: true })).toHaveValue('本机草稿，不经过服务器');
+  await expect(page.getByLabel('New research note', { exact: true })).toHaveValue('本机草稿，不经过服务器');
   expect(requests).toEqual([]);
 });
