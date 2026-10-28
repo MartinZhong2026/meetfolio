@@ -1,0 +1,12 @@
+{
+  "base": "Meetfolio Desktop Lite v0.5.1 Windows installer",
+  "english_overlay": "preview (NOT the official v0.6.0 release)",
+  "sourceUiJs": "index-IyWnOIEo.js",
+  "translatedStrings": 399,
+  "remainingChineseUiStrings": 0,
+  "newAsset": "index-english-b561f2b979.js",
+  "frontendOriginalSHA256": "4dafb128a0064d807b47f9d3bc157540530c6cb9b52f7e2cc1f1119bdc66726e",
+  "frontendEnglishSHA256": "b561f2b9792b1ece12b2ba4a315a195192c287e84815151da39be4f508701e90",
+  "nativeRuntime": "Unmodified; use only with an original Meetfolio v0.5.1 installation",
+  "caveat": "Compiled JavaScript overlay, not original TS/React source code. Not a signed installer."
+}
