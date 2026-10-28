@@ -1,0 +1,24 @@
+{
+  "name": "@meetfolio/desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Meetfolio offline interview workspace",
+  "author": "Martin Zhong",
+  "license": "MIT",
+  "main": "dist/main.cjs",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "icons": "node scripts/generate-icons.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "22.19.15",
+    "electron": "45.0.0",
+    "electron-builder": "26.18.0",
+    "esbuild": "0.25.12",
+    "sharp": "0.34.5",
+    "typescript": "5.9.3",
+    "vitest": "2.1.9"
+  }
+}

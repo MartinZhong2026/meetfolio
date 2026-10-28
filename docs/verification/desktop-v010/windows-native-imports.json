@@ -1,0 +1,51 @@
+{
+  "platform": "Windows x64",
+  "package": "sherpa-onnx-win-x64@1.13.8",
+  "inspection": "GNU objdump PE import tables from the official locked npm package",
+  "files": [
+    {
+      "file": "onnxruntime.dll",
+      "sha256": "7f66f939a881baf4f46a2216496798edf4a1429878b646d12674aa62f27d8a25",
+      "imports": [
+        "KERNEL32.dll",
+        "ADVAPI32.dll",
+        "api-ms-win-core-path-l1-1-0.dll",
+        "dbghelp.dll",
+        "SETUPAPI.dll",
+        "dxgi.dll"
+      ]
+    },
+    {
+      "file": "onnxruntime_providers_shared.dll",
+      "sha256": "551d0e1fe4c227d8542314ba718d52f4379e0c7bfe729a37c59833a884e27b4d",
+      "imports": [
+        "KERNEL32.dll"
+      ]
+    },
+    {
+      "file": "sherpa-onnx-c-api.dll",
+      "sha256": "b0801cd8eeead83213c60b92cc004de6f3ac4cd4a9ac7c388c16b97c590f1e99",
+      "imports": [
+        "onnxruntime.dll",
+        "KERNEL32.dll",
+        "ADVAPI32.dll"
+      ]
+    },
+    {
+      "file": "sherpa-onnx-cxx-api.dll",
+      "sha256": "e709c46a63e4b84f3862aa0c843a804040b42ea054a398b420142f6c8e58ec77",
+      "imports": [
+        "sherpa-onnx-c-api.dll",
+        "KERNEL32.dll"
+      ]
+    },
+    {
+      "file": "sherpa-onnx.node",
+      "sha256": "f5fd562bdc4bea167eee8ac981c6acd88c05cc8d2792b67d8951566818e293ca",
+      "imports": [
+        "sherpa-onnx-c-api.dll",
+        "KERNEL32.dll"
+      ]
+    }
+  ]
+}

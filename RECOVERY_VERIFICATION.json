@@ -1,0 +1,38 @@
+{
+  "date": "2026-10-26",
+  "original_zip_filename": "meetfolio_2e0bbdd_continued_modified_source(3).zip",
+  "original_sha256": "c46d1c4966a47463eb1c03fa66b362e14ca37628701c397f92ef2b84887c19b7",
+  "original_zip_entries": 270,
+  "original_source_files": 270,
+  "recovered_source_files_excluding_dependencies": 273,
+  "changed_from_original": [
+    "web/desktop/index.html",
+    "web/src/desktop/DesktopApp.tsx",
+    "web/src/desktop/LiveInterview.tsx",
+    "web/src/desktop/ModelCard.tsx",
+    "web/src/desktop/Preparation.tsx",
+    "web/src/desktop/ReviewExport.tsx",
+    "web/src/desktop/Transcript.tsx",
+    "web/src/desktop/desktop.css",
+    "web/src/desktop/exports.ts",
+    "web/src/desktop/fixtures.ts",
+    "web/src/desktop/model.test.ts",
+    "web/src/desktop/model.ts",
+    "web/src/desktop/persistence.ts",
+    "web/src/desktop/useLocalRuntime.ts"
+  ],
+  "new_files": [
+    "README-RECOVERY.md",
+    "RECOVERY_GAP_REPORT.md",
+    "web/src/desktop/englishNotes.ts"
+  ],
+  "missing_original_files": [],
+  "validation": {
+    "typescript_syntax_transpile": "PASS: 0 TS/TSX parse diagnostics (not full typechecking)",
+    "notebook_schema_and_export_runtime": "PASS: original/ref roundtrip; legacy schema; malformed and oversized references rejected; export provenance; recovery guard",
+    "npm_ci_and_vitest": "UNAVAILABLE: complete npm dependencies not retrievable in sandbox",
+    "Windows_Mac_Electron_asr_physical": "NOT_RUN",
+    "v0_6_0_binary_comparison": "NOT_RUN: official installer not supplied"
+  },
+  "notes": "This output is stage 1 incremental recovery, NOT official Meetfolio v0.6.0 source."
+}

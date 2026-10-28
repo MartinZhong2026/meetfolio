@@ -1,0 +1,89 @@
+name: Windows desktop installer
+on:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  installed-app:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --include=optional
+      - name: Install locked Electron binary
+        run: npm exec -w desktop -- install-electron
+      - run: npm run typecheck
+      - run: npm run test:native-desktop
+      - run: npm run build:electron
+      - name: Build real Windows x64 NSIS installer (never publish)
+        run: npx electron-builder --win nsis --x64 --config desktop/electron-builder.yml --config.win.signExecutable=false --publish never
+      - name: Signing verification must reject the real unsigned candidate
+        shell: pwsh
+        run: |
+          $installer = (Get-ChildItem work/desktop-packages/*setup.exe).FullName
+          try {
+            ./desktop/scripts/verify-signatures.ps1 -Files @($installer) -ExpectedSubject 'No verified test signer'
+            throw 'Unsigned candidate unexpectedly passed signature verification'
+          } catch {
+            if ($_.ToString() -notlike '*Authenticode is not valid*NotSigned*') { throw }
+            Write-Host 'Unsigned candidate correctly rejected; no signed-build success is claimed.'
+          }
+      - name: Fetch official public speech/model archive
+        shell: bash
+        run: |
+          mkdir -p work
+          curl --fail --location --retry 3 --output work/xasr.tar.bz2 https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-x-asr-480ms-streaming-zipformer-transducer-zh-en-punct-int8-2026-06-05.tar.bz2
+      - run: node desktop/scripts/prepare-speech-sample.mjs work/xasr.tar.bz2 work/official-sample
+      - name: Exercise real interactive Chinese installer and automatic launch
+        shell: pwsh
+        run: |
+          $installer = (Get-ChildItem work/desktop-packages/*setup.exe).FullName
+          $target = Join-Path $env:LOCALAPPDATA 'Programs/Meetfolio 安装验证'
+          ./desktop/scripts/verify-installer.ps1 -Installer $installer -Target $target
+          "MEETFOLIO_INSTALLED=$target" >> $env:GITHUB_ENV
+          "MEETFOLIO_PROFILE=$(Join-Path $env:LOCALAPPDATA 'Meetfolio')" >> $env:GITHUB_ENV
+      - name: Inspect actual PE icon groups and NSIS bitmap resources
+        if: always()
+        shell: pwsh
+        run: |
+          $installer = (Get-ChildItem work/desktop-packages/*setup.exe).FullName
+          $target = Join-Path $env:LOCALAPPDATA 'Programs/Meetfolio 安装验证'
+          node desktop/scripts/verify-branding.mjs "$installer" "$target"
+      - name: Verify installed application, real ASR, capture, recovery, exports and offline firewall
+        shell: pwsh
+        run: |
+          node desktop/scripts/verify-app.mjs --executable "$env:MEETFOLIO_INSTALLED/Meetfolio.exe" --archive work/xasr.tar.bz2 --audio work/official-sample/speech.wav --profile "$env:MEETFOLIO_PROFILE" --out work/installed-app-evidence --block-network
+      - name: Reinstall the candidate over existing binaries without deleting data
+        shell: pwsh
+        run: |
+          $installer = (Get-ChildItem work/desktop-packages/*setup.exe).FullName
+          ./desktop/scripts/verify-installer.ps1 -Installer $installer -Target "$env:MEETFOLIO_INSTALLED" -Reinstall
+          node desktop/scripts/verify-app.mjs --executable "$env:MEETFOLIO_INSTALLED/Meetfolio.exe" --profile "$env:MEETFOLIO_PROFILE" --out work/installed-app-evidence --after-update
+      - name: Verify existing all-users scope remains all-users
+        shell: pwsh
+        run: |
+          $installer = (Get-ChildItem work/desktop-packages/*setup.exe).FullName
+          $uninstaller = Join-Path $env:MEETFOLIO_INSTALLED 'Uninstall Meetfolio.exe'
+          $uninstall = Start-Process -FilePath $uninstaller -ArgumentList '/S' -PassThru -Wait
+          if ($uninstall.ExitCode -ne 0) { throw 'Per-user uninstall failed' }
+          $target = Join-Path $env:ProgramFiles 'Meetfolio 安装验证'
+          ./desktop/scripts/verify-installer.ps1 -Installer $installer -Target $target -AllUsers
+          ./desktop/scripts/verify-installer.ps1 -Installer $installer -Target $target -Reinstall -ExpectAllUsers
+          node desktop/scripts/verify-app.mjs --executable "$target/Meetfolio.exe" --profile "$env:MEETFOLIO_PROFILE" --out work/installed-app-evidence --after-update
+      - name: Record candidate checksum
+        shell: pwsh
+        run: Get-FileHash work/desktop-packages/*setup.exe -Algorithm SHA256 | Format-List | Tee-Object -FilePath work/installed-app-evidence/installer-sha256.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Meetfolio-v0.1.0-windows-x64-candidate
+          path: |
+            work/desktop-packages/*setup.exe
+            work/installed-app-evidence/
+            work/desktop-runtime/dependencies.json
+          retention-days: 14

@@ -1,0 +1,16 @@
+{
+  "name": "Meetfolio GitHub recovery repository",
+  "created_on": "2026-10-26",
+  "status": "unverified reconstruction, not official v0.6.0",
+  "sources": {
+    "Meetfolio_Incremental_Reconstruction_Stage1.zip": 274,
+    "Meetfolio_v051_Recovered_Compiled_Code_Reference.zip": 22,
+    "Meetfolio_v051_English_Overlay_Preview.zip": 12
+  },
+  "file_count_excluding_manifest_and_checksum": 314,
+  "original_git_history_preserved": false,
+  "official_v060_complete": false,
+  "web_pr15_restored": false,
+  "compiled_v051_reference_included": true,
+  "english_overlay_included": true
+}

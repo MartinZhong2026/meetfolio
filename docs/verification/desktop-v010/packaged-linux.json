@@ -1,0 +1,35 @@
+{
+  "platform": "linux",
+  "packaged": true,
+  "executable": "/workspace/work/meetfolio-desktop/work/desktop-packages/linux-unpacked/Meetfolio",
+  "nativeAsr": true,
+  "microphone": "Chromium file-backed microphone using official X-ASR speech WAV; no physical hardware",
+  "physicalMicrophone": false,
+  "longInterviewQualified": false,
+  "runAsNode": true,
+  "linuxVerificationNoSandbox": true,
+  "stages": [
+    "native file picker import, integrity verification, installation and actual initialization",
+    "actual partial/final CPU inference; native child termination/replay; capture pause and final flush",
+    "notes/categories, preserved originals, nonoverlapping recovery/resume timestamps and TXT/Markdown/DOCX content",
+    "close while recording flushed native finals and the last unsaved draft; restart preserved notebook/model with an explicit interruption"
+  ],
+  "timestamps": [
+    {
+      "seq": 1,
+      "startMs": 0,
+      "endMs": 30400
+    },
+    {
+      "seq": 2,
+      "startMs": 30400,
+      "endMs": 60800
+    },
+    {
+      "seq": 3,
+      "startMs": 60800,
+      "endMs": 61604.6875
+    }
+  ],
+  "result": "passed"
+}

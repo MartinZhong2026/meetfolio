@@ -1,0 +1,125 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+  html {
+    font-size: 15px;
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    @apply bg-bg font-sans text-ink antialiased;
+    line-height: 1.7;
+    text-rendering: optimizeLegibility;
+  }
+  h1, h2, h3 {
+    @apply font-serif text-ink;
+    letter-spacing: 0.01em;
+  }
+  ::selection {
+    @apply bg-primary-soft text-ink;
+  }
+  :focus-visible {
+    @apply outline-none ring-2 ring-primary ring-offset-2 ring-offset-bg;
+  }
+  button, [role='button'] {
+    touch-action: manipulation;
+  }
+  textarea, input, select {
+    font: inherit;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-lg px-4 py-2 text-[0.95rem] font-medium transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-50 select-none whitespace-nowrap;
+    min-height: 40px;
+  }
+  .btn-primary {
+    @apply btn bg-primary text-white hover:bg-primary-hover;
+  }
+  .btn-secondary {
+    @apply btn border border-line-strong bg-surface text-ink hover:bg-sunken;
+  }
+  .btn-ghost {
+    @apply btn text-ink-soft hover:bg-sunken;
+  }
+  .btn-danger {
+    @apply btn bg-danger text-white hover:opacity-90;
+  }
+  .btn-sm {
+    @apply px-3 py-1 text-sm;
+    min-height: 32px;
+  }
+  .btn-icon {
+    @apply inline-flex h-9 w-9 items-center justify-center rounded-lg text-ink-soft transition-colors hover:bg-sunken disabled:opacity-40;
+  }
+  .input {
+    @apply w-full rounded-lg border border-line-strong bg-surface px-3 py-2 text-ink placeholder:text-muted/70 transition-shadow;
+    min-height: 42px;
+  }
+  .input:focus {
+    @apply outline-none ring-2 ring-primary/40 border-primary;
+  }
+  .label {
+    @apply mb-1 block text-sm font-medium text-ink-soft;
+  }
+  .card {
+    @apply rounded-xl2 border border-line bg-surface shadow-card;
+  }
+  .chip {
+    @apply inline-flex items-center gap-1 rounded-full border border-line bg-surface px-2.5 py-0.5 text-xs text-ink-soft;
+  }
+  .panel-title {
+    @apply font-serif text-[1.05rem] font-semibold tracking-wide text-ink;
+  }
+  .scroll-quiet {
+    scrollbar-width: thin;
+    scrollbar-color: #cbd3cc transparent;
+  }
+  .scroll-quiet::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  .scroll-quiet::-webkit-scrollbar-thumb {
+    @apply rounded-full bg-line-strong;
+  }
+  /* Long transcripts: skip layout/paint work for rows that are off screen. */
+  .seg-row {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 76px;
+  }
+}
+
+/* Markdown rendering for summaries (kept deliberately plain; this is a reading surface). */
+.prose-mf h1 { @apply mb-3 mt-1 text-2xl font-semibold; }
+.prose-mf h2 { @apply mb-2 mt-7 border-b border-line pb-1.5 text-lg font-semibold; }
+.prose-mf h3 { @apply mb-1 mt-4 text-base font-semibold; }
+.prose-mf p { @apply my-2; }
+.prose-mf ul { @apply my-2 list-disc pl-5; }
+.prose-mf li { @apply my-0.5; }
+.prose-mf blockquote { @apply my-3 border-l-4 border-primary-ring bg-primary-soft/50 px-4 py-2 text-ink-soft; }
+.prose-mf strong { @apply font-semibold text-ink; }
+.prose-mf a.seg-link {
+  @apply mx-0.5 inline-flex items-center rounded bg-primary-soft px-1.5 font-mono text-xs text-primary no-underline hover:bg-primary hover:text-white;
+}
+.prose-mf em { @apply text-muted; }
+
+@keyframes pulse-rec {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.45; transform: scale(0.85); }
+}
+.rec-dot { animation: pulse-rec 1.6s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .rec-dot { animation: none; }
+  * { scroll-behavior: auto !important; transition-duration: 0.01ms !important; }
+}
+
+@keyframes flash-seg {
+  0% { background-color: #E8F0EC; }
+  100% { background-color: transparent; }
+}
+.flash-seg { animation: flash-seg 2.2s ease-out; }

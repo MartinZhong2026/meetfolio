@@ -1,0 +1,55 @@
+{
+  "platform": "linux",
+  "arch": "x64",
+  "node": "v22.23.4",
+  "model": "x-asr-480ms-punct-int8-2026-06-05",
+  "archiveSha256": "fa5f63d618e5a01526e275a358bb7772e403f84808a4769fba52cffd8160bf74",
+  "retainedBytes": 1900544,
+  "requests": [
+    {
+      "range": null,
+      "offset": 0
+    },
+    {
+      "range": "bytes=1900544-",
+      "offset": 1900544
+    }
+  ],
+  "states": [
+    "downloading",
+    "download-failed",
+    "downloading",
+    "installed",
+    "loading",
+    "ready",
+    "installed",
+    "loading",
+    "error",
+    "installed",
+    "loading",
+    "ready",
+    "installed"
+  ],
+  "beforeRepair": [
+    {
+      "kind": "final",
+      "key": "0",
+      "text": "昨天是 Monday， today is 礼拜二， the day after tomorrow 是星期三",
+      "startMs": 0,
+      "endMs": 10053
+    }
+  ],
+  "afterRepair": [
+    {
+      "kind": "final",
+      "key": "0",
+      "text": "昨天是 Monday， today is 礼拜二， the day after tomorrow 是星期三",
+      "startMs": 0,
+      "endMs": 10053
+    }
+  ],
+  "transport": "Injected interrupted HTTP-body/range response using actual verified official archive bytes; no network required",
+  "nativeRecognition": true,
+  "physicalMicrophone": false,
+  "windowsInstaller": false
+}

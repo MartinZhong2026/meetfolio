@@ -1,0 +1,81 @@
+
+> meetfolio@0.1.0 test
+> npm run test -w server && npm run test -w web
+
+
+> @meetfolio/server@0.1.0 test
+> vitest run
+
+
+ RUN  v2.1.9 /workspace/work/meetfolio-xasr/server
+
+ ✓ test/pipeline.test.ts (18 tests) 29874ms
+   ✓ pipeline: interruption recovery (virtual time) > provider connection dies after 17 minutes → reconnects, replays in-flight audio, no loss or duplicates 1712ms
+   ✓ pipeline: interruption recovery (virtual time) > provider connection dies after 25 minutes → reconnects, replays in-flight audio, no loss or duplicates 2688ms
+   ✓ pipeline: interruption recovery (virtual time) > provider connection dies after 60 minutes → reconnects, replays in-flight audio, no loss or duplicates 4776ms
+   ✓ pipeline: interruption recovery (virtual time) > survives repeated drops at 17, 25 and 60 minutes in one session (cumulative) 4609ms
+   ✓ pipeline: interruption recovery (virtual time) > logical 90-minute session with planned rotation, a provider session cap, and random drops 8184ms
+   ✓ pipeline: interruption recovery (virtual time) > planned rotation waits for a sentence boundary, but not forever 950ms
+   ✓ pipeline: interruption recovery (virtual time) > a hung provider shutdown during rotation does not lose the in-flight audio 704ms
+   ✓ pipeline: gap detection and honest handling of unrecoverable intervals > a short outage is bridged by replay: audio is buffered, paced back to the provider, no gap 306ms
+   ✓ pipeline: gap detection and honest handling of unrecoverable intervals > an outage longer than the replay buffer records an explicit gap and emits it to the client 325ms
+   ✓ pipeline: database failures > transient database errors are retried and nothing is duplicated or reordered 431ms
+   ✓ pipeline: database failures > a database that stays down is surfaced as unsaved segments, never reported as success 4234ms
+ ✓ test/summaries.test.ts (12 tests) 1628ms
+ ✓ test/adapters.test.ts (10 tests) 672ms
+ ✓ test/ws.test.ts (9 tests) 3683ms
+   ✓ live transcription over WebSocket (demo provider; no paid calls) > provider drop is recovered transparently: same meeting, same session, no duplicates 474ms
+   ✓ live transcription over WebSocket (demo provider; no paid calls) > browser connection loss: salvage, mark interrupted, and a reconnect with a later start position creates a recoverable gap 544ms
+   ✓ live transcription over WebSocket (demo provider; no paid calls) > gap recovery: uploading the locally buffered audio re-transcribes the missing interval, idempotently 1546ms
+   ✓ live transcription over WebSocket (demo provider; no paid calls) > page-reload resume: after a clean pause the saved transcript is intact and new capture continues the same timeline 359ms
+ ✓ test/content.test.ts (12 tests) 3106ms
+   ✓ manual notes (autosave semantics) > survives a reload (read back from the database) and can be deleted 446ms
+   ✓ reference documents > extracts text from TXT (UTF-8 and GB18030), Markdown, DOCX and PDF 842ms
+ ✓ test/xasr.test.ts (11 tests) 283ms
+ ✓ test/auth.test.ts (12 tests) 1141ms
+ ✓ test/meetings.test.ts (10 tests) 1002ms
+ ✓ test/exports.test.ts (4 tests) 694ms
+ ✓ test/llm.test.ts (5 tests) 1525ms
+   ✓ LLM client (OpenAI-compatible DashScope endpoint) > classifies auth, rate limit (retried), content filter and server errors 1505ms
+ ✓ test/config.test.ts (3 tests) 27ms
+ ✓ test/xasr-archive.test.ts (13 tests) 145ms
+
+ Test Files  12 passed (12)
+      Tests  119 passed (119)
+   Start at  06:52:03
+   Duration  54.69s (transform 683ms, setup 0ms, collect 7.61s, tests 43.78s, environment 3ms, prepare 734ms)
+
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.1
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.1
+npm notice To update run: npm install -g npm@12.2.1
+npm notice
+
+> @meetfolio/web@0.1.0 test
+> vitest run
+
+
+ RUN  v2.1.9 /workspace/work/meetfolio-xasr/web
+
+ ✓ src/audio/transcriber.test.ts (13 tests) 7724ms
+   ✓ Transcriber: interruption recovery > network drop at 25 min: capture continues, hello resumes at the live position, and the missed audio is uploaded from the local buffer 392ms
+   ✓ Transcriber: interruption recovery > network drop at 60 min: capture continues, hello resumes at the live position, and the missed audio is uploaded from the local buffer 3630ms
+   ✓ Transcriber: interruption recovery > logical 90-minute session with drops at 17, 25 and 60 minutes: every frame is delivered exactly once (live or via gap upload) 3436ms
+ ✓ src/store/workspace.test.ts (5 tests) 17ms
+ ✓ src/audio/chunkStore.test.ts (7 tests) 42ms
+
+ Test Files  3 passed (3)
+      Tests  25 passed (25)
+   Start at  06:52:59
+   Duration  10.78s (transform 190ms, setup 80ms, collect 231ms, tests 7.78s, environment 1.43s, prepare 648ms)
+
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.1
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.1
+npm notice To update run: npm install -g npm@12.2.1
+npm notice
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.1
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.1
+npm notice To update run: npm install -g npm@12.2.1
+npm notice

@@ -1,0 +1,20 @@
+
+> @meetfolio/server@0.1.0 test
+> vitest run test/xasr.test.ts test/xasr-archive.test.ts
+
+
+ RUN  v2.1.9 /workspace/work/meetfolio-xasr/server
+
+ ✓ test/xasr.test.ts (11 tests) 286ms
+ ✓ test/xasr-archive.test.ts (13 tests) 144ms
+
+ Test Files  2 passed (2)
+      Tests  24 passed (24)
+   Start at  06:47:21
+   Duration  2.02s (transform 278ms, setup 0ms, collect 307ms, tests 430ms, environment 0ms, prepare 115ms)
+
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.1
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.1
+npm notice To update run: npm install -g npm@12.2.1
+npm notice
