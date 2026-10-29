@@ -17,6 +17,8 @@ GitHub Actions run `40718812762`（提交 `2c9fc29`）中，隔离 PostgreSQL �
 
 安全修复候选将服务端 `@fastify/static`、`drizzle-orm`、`nodemailer` 和 `zod` 更新至审计建议版本；本地高危级别审计通过，但仍报告 2 项中危 React Router 问题。此变更含主要版本升级，必须以对应提交的隔离数据库、Web E2E 和实际 GitHub Actions 结果验证兼容性，不能以旧提交的通过结果替代。
 
+GitHub Actions run `40721397365`（提交 `d2548cb`）随后通过全部四个作业：119 项服务端测试重复两次、10 项 Desktop 浏览器测试及 33 项 Web 浏览器测试通过，生产依赖高危阈值审计通过。完整依赖审计另发现开发工具中的 2 项严重和 2 项高危告警；工具链安全升级候选将 Vite、Vitest、Sharp 等更新，本地完整依赖审计还剩 6 项中危（Drizzle Kit 依赖链和 React Router）。该工具链升级仍须在新提交上通过完整 CI；旧 CI 结果不能代替它。
+
 测试数据库的重建操作现在要求显式配置受限的本机测试库及确认变量，详见 [工程工作流](docs/engineering/CODEX_WORKFLOW.md)。仓库历史编译参考的公开再分发权利和第三方许可完整性仍需人工核实。下文是原 Stage 1 审计记录，其历史测试状态不是 Phase 2 的实时结果。
 
 **审计日期：2026-10-26**  

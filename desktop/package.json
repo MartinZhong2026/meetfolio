@@ -16,9 +16,9 @@
     "@types/node": "22.19.15",
     "electron": "45.0.0",
     "electron-builder": "26.18.0",
-    "esbuild": "0.25.12",
-    "sharp": "0.34.5",
+    "esbuild": "0.28.2",
+    "sharp": "0.35.5",
     "typescript": "5.9.3",
-    "vitest": "2.1.9"
+    "vitest": "5.0.5"
   }
 }

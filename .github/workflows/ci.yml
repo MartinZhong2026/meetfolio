@@ -27,8 +27,8 @@ jobs:
           git fetch origin main:refs/remotes/origin/main
           git diff --check "$(git merge-base HEAD origin/main)" HEAD -- . ':(exclude)recovery-reference/**' ':(exclude)docs/**' ':(exclude)RECOVERY_GAP_REPORT.md'
       - run: npm run verify
-      - name: Check production dependency advisories
-        run: npm audit --omit=dev --audit-level=high
+      - name: Check production and development dependency advisories
+        run: npm audit --audit-level=high
 
   server:
     runs-on: ubuntu-latest
