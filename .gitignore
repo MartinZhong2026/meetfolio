@@ -43,3 +43,5 @@ uploads/
 .npm/
 *.tsbuildinfo
 BACKUP_LOCATION.txt
+*.onnx
+*.tar.bz2

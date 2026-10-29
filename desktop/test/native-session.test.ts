@@ -2,16 +2,32 @@ import { describe, expect, it, vi } from 'vitest';
 import { NativeSession } from '../src/native-session';
 import { AsrError, type AsrProvider, type AsrHandlers } from '../../server/src/asr/types';
 function fixture() {
-  const connections: { handlers: AsrHandlers; audio: Buffer[] }[] = [];
+  const connections: { handlers: AsrHandlers; audio: Buffer[]; close: ReturnType<typeof vi.fn> }[] = [];
   const provider: AsrProvider = { name: 'test-only', model: 'fixture', isDemo: false, async connect(_opts, handlers) {
-    const data = { handlers, audio: [] as Buffer[] }; connections.push(data);
-    return { sendAudio: pcm => data.audio.push(pcm), close: () => {}, finish: async () => { handlers.onClosed({ clean: true }); return true; } };
+    const data = { handlers, audio: [] as Buffer[], close: vi.fn() }; connections.push(data);
+    return { sendAudio: pcm => data.audio.push(pcm), close: data.close, finish: async () => { handlers.onClosed({ clean: true }); return true; } };
   } };
   const callbacks = { final: vi.fn(), partial: vi.fn(), interrupted: vi.fn(), recovering: vi.fn() };
   const live = new NativeSession(provider, callbacks);
   return { live, connections, callbacks };
 }
 describe('native session replay (injected provider, not model accuracy)', () => {
+  it('rejects duplicate starts and duplicate finals, and ignores invalid native timestamps', async () => {
+    const f = fixture(); await f.live.start(); await expect(f.live.start()).rejects.toThrow('already');
+    f.live.send(new Uint8Array(3200));
+    const result = { kind: 'final' as const, key: '0', text: 'fixture', startMs: 0, endMs: 100 };
+    f.connections[0].handlers.onResult({ ...result, startMs: NaN });
+    f.connections[0].handlers.onResult(result); f.connections[0].handlers.onResult(result);
+    expect(f.callbacks.final).toHaveBeenCalledOnce(); await f.live.stop();
+  });
+  it('closes a live connection before replaying after a send failure', async () => {
+    const f = fixture(); await f.live.start();
+    vi.spyOn(f.connections[0].audio, 'push').mockImplementationOnce(() => { throw new AsrError('transient', 'local_asr_ipc', 'fixture'); });
+    f.live.send(new Uint8Array(3200)); await new Promise(resolve => setImmediate(resolve));
+    expect(f.connections[0].close).toHaveBeenCalledOnce();
+    expect(f.connections).toHaveLength(2); expect(f.connections[1].audio).toHaveLength(1);
+    await f.live.stop();
+  });
   it('persists finals, keeps partials ephemeral and acknowledges silent endpoints', async () => {
     const f = fixture(); await f.live.start(); f.live.send(new Uint8Array(3200));
     f.connections[0].handlers.onResult({ kind: 'interim', key: '0', text: 'partial', startMs: 0, endMs: null });

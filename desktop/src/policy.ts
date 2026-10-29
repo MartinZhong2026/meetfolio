@@ -4,13 +4,14 @@ export const CHANNEL = {
   import: 'meetfolio:model-import', repair: 'meetfolio:model-repair', permission: 'meetfolio:microphone',
   start: 'meetfolio:transcription-start', audio: 'meetfolio:pcm', stop: 'meetfolio:transcription-stop',
   save: 'meetfolio:save-export', event: 'meetfolio:runtime-event', closeReady: 'meetfolio:close-ready',
+  diagnostic: 'meetfolio:diagnostic',
 } as const;
 export function isAppUrl(value: string): boolean {
   try { const url = new URL(value); return url.protocol === 'meetfolio:' && url.hostname === 'app' && !url.username && !url.password && !url.port; }
   catch { return false; }
 }
 export function validSession(value: unknown): value is string {
-  return typeof value === 'string' && /^[a-f0-9-]{36}$/.test(value);
+  return typeof value === 'string' && /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(value);
 }
 export function validAudio(value: unknown): value is { id: string; pcm: Uint8Array } {
   if (!value || typeof value !== 'object') return false;

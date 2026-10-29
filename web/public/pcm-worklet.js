@@ -56,9 +56,11 @@ class PcmDownsampler extends AudioWorkletProcessor {
       }
       pos += this.ratio;
     }
-    const consumed = Math.floor(pos);
+    // Keep any skip beyond this render block; resetting it loses fractional time
+    // at each block and drifts when a device runs at 44.1/48 kHz.
+    const consumed = Math.min(Math.floor(pos), buf.length);
     this.pos = pos - consumed;
-    const rest = buf.subarray(Math.min(consumed, buf.length));
+    const rest = buf.subarray(consumed);
     this.pending = rest.length ? [new Float32Array(rest)] : [];
     this.pendingLen = rest.length;
     return true;

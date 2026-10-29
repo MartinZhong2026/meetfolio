@@ -28,6 +28,14 @@ export class LocalXAsrProvider implements AsrProvider {
     // Drain native diagnostics without retaining interview data or an unbounded stderr buffer.
     worker.stderr?.resume();
     const exited = new Promise<void>(resolve => worker.once('close', () => resolve()));
+    const terminate = () => {
+      worker.kill();
+      return new Promise<boolean>(resolve => {
+        const deadline = setTimeout(() => { worker.kill('SIGKILL'); resolve(false); }, 2000);
+        deadline.unref();
+        void exited.then(() => { clearTimeout(deadline); resolve(true); });
+      });
+    };
     let ready = false;
     let closed = false;
     let queuedBytes = 0;
@@ -35,36 +43,49 @@ export class LocalXAsrProvider implements AsrProvider {
     let finishCallback: ((ok: boolean) => void) | null = null;
     let connectResolve: ((conn: AsrConnection) => void) | null = null;
     let connectReject: ((error: Error) => void) | null = null;
+    let lastAck = Date.now();
+    let startupTimeout: ReturnType<typeof setTimeout>;
+    const watchdog = setInterval(() => {
+      if (ready && !closed && queuedBytes > 0 && Date.now() - lastAck > 15000) {
+        fail(new AsrError('transient', 'local_asr_ack_timeout', 'Native inference stopped acknowledging audio'));
+      }
+    }, 1000);
+    watchdog.unref();
+    const cleanup = () => {
+      clearInterval(watchdog);
+      clearTimeout(startupTimeout);
+      signal?.removeEventListener('abort', abort);
+    };
 
     const fail = (error: AsrError) => {
       if (closed) return;
       closed = true;
+      cleanup();
       const settle = finishCallback;
       finishCallback = null;
-      void exited.then(() => { settle?.(false); if (!ready) connectReject?.(error); });
-      if (ready) handlers.onClosed({ clean: false, error });
-      worker.kill();
+      void terminate().then(() => { settle?.(false); if (!ready) connectReject?.(error); else handlers.onClosed({ clean: false, error }); });
     };
     const stop = (clean: boolean) => {
       if (closed) return;
       closed = true;
+      cleanup();
       const settle = finishCallback;
       finishCallback = null;
-      void exited.then(() => {
-        settle?.(clean);
+      void terminate().then(terminated => {
+        settle?.(clean && terminated);
         if (!ready) connectReject?.(new AsrError('fatal', 'local_asr_closed', '模型尚未加载就已关闭。'));
+        else handlers.onClosed({ clean: clean && terminated, ...(!terminated ? { error: new AsrError('fatal', 'local_asr_cleanup_timeout', 'Native process cleanup timed out') } : {}) });
       });
-      if (ready) handlers.onClosed({ clean });
-      worker.kill();
     };
 
     const conn: AsrConnection = {
       sendAudio(pcm: Buffer) {
         if (closed || !ready || finishing) throw new AsrError('transient', 'local_asr_closed', 'Recognition is not accepting audio');
-        if (pcm.byteLength % 2) {
+        if (!pcm.byteLength || pcm.byteLength % 2) {
           fail(new AsrError('fatal', 'local_pcm_alignment', 'PCM16 frames must contain complete samples'));
           return;
         }
+        if (!queuedBytes) lastAck = Date.now();
         queuedBytes += pcm.byteLength;
         // Avoid unbounded memory on slow laptops; a failed worker triggers ordinary gap recovery.
         if (queuedBytes > 16_000 * 2 * 30) {
@@ -98,7 +119,7 @@ export class LocalXAsrProvider implements AsrProvider {
       connectResolve = resolve;
       connectReject = reject;
     });
-    const startupTimeout = setTimeout(() => {
+    startupTimeout = setTimeout(() => {
       fail(new AsrError('fatal', 'local_asr_load_timeout', 'X-ASR 模型加载超时'));
     }, 60_000);
     const abort = () => fail(new AsrError('transient', 'local_asr_aborted', '本地识别已取消'));
@@ -111,7 +132,10 @@ export class LocalXAsrProvider implements AsrProvider {
         ready = true;
         connectResolve?.(conn);
       } else if (msg.type === 'ack') {
-        queuedBytes = Math.max(0, queuedBytes - (msg.bytes ?? 0));
+        if (Number.isSafeInteger(msg.bytes) && msg.bytes! > 0 && msg.bytes! <= queuedBytes) {
+          queuedBytes -= msg.bytes!;
+          lastAck = Date.now();
+        }
       } else if (msg.type === 'result' && msg.kind && msg.key !== undefined) {
         handlers.onResult({
           kind: msg.kind,
@@ -126,7 +150,9 @@ export class LocalXAsrProvider implements AsrProvider {
         stop(true);
       } else if (msg.type === 'error') {
         clearTimeout(startupTimeout);
-        fail(new AsrError('fatal', 'local_asr_runtime_error', msg.message ?? 'X-ASR 引擎发生错误'));
+        const codes = ['local_asr_native_missing', 'local_asr_native_init', 'local_asr_model_load', 'local_pcm_alignment'];
+        const code = 'code' in msg && typeof msg.code === 'string' && codes.includes(msg.code) ? msg.code : 'local_asr_runtime_error';
+        fail(new AsrError('fatal', code, 'Local ASR failed; check the native runtime and model integrity'));
       }
     });
     worker.on('error', (e) => {
@@ -141,7 +167,8 @@ export class LocalXAsrProvider implements AsrProvider {
       return await pending;
     } finally {
       clearTimeout(startupTimeout);
-      signal?.removeEventListener('abort', abort);
+      // Abort remains subscribed for the complete session, not only model startup.
+      if (closed) cleanup();
     }
   }
 }

@@ -11,6 +11,7 @@ interface Callbacks {
   partial(result: { key: string; text: string; startMs: number }): void;
   interrupted(reason: string): void;
   recovering(): void;
+  diagnostic?(code: string): void;
 }
 /** A bounded, in-memory replay buffer; only confirmed finals enter the notebook. No cloud fallback. */
 export class NativeSession {
@@ -26,8 +27,17 @@ export class NativeSession {
   private recovery: Promise<void> | null = null;
   private finishing: Promise<void> | null = null;
   private startup = new AbortController();
+  private started = false;
+  private finals = new Set<string>();
   constructor(private provider: AsrProvider, private callbacks: Callbacks) {}
-  async start(): Promise<void> { await this.open(); }
+  async start(): Promise<void> {
+    if (this.started || this.closed) throw new Error('Session already started or closed');
+    this.started = true;
+    try { await this.open(); } catch (error) {
+      this.callbacks.diagnostic?.((error as AsrError)?.code ?? 'local_asr_native_init');
+      this.interrupt('Local engine initialization failed. Check the model and retry.'); throw error;
+    }
+  }
   private async open(): Promise<void> {
     const generation = ++this.generation;
     const base = this.confirmed;
@@ -50,6 +60,9 @@ export class NativeSession {
     if (!this.closed && this.connection !== connection) throw new Error('Replay connection failed');
   }
   private result(result: AsrResult, base: number, generation: number): void {
+    if (!Number.isFinite(result.startMs) || result.startMs < 0 ||
+        (result.kind === 'final' && (!Number.isFinite(result.endMs) || result.endMs! < result.startMs)) ||
+        typeof result.text !== 'string' || result.text.length > 200000) return;
     const start = Math.max(base, base + Math.round(result.startMs * 16));
     if (result.kind === 'interim') {
       this.callbacks.partial({ key: `${generation}_${result.key}`, text: result.text, startMs: start / 16 });
@@ -57,6 +70,10 @@ export class NativeSession {
     }
     const end = Math.min(this.received, base + Math.round((result.endMs ?? 0) * 16));
     if (end < this.confirmed || end < start) return;
+    const key = `${generation}_${result.key}`;
+    if (this.finals.has(key)) return;
+    this.finals.add(key);
+    if (this.finals.size > 256) this.finals.delete(this.finals.values().next().value!);
     // Empty endpoint finals still acknowledge silence and bound the replay buffer.
     this.confirmed = Math.max(this.confirmed, end);
     this.frames = this.frames.filter(frame => frame.start + frame.pcm.length / 2 > this.confirmed);
@@ -73,7 +90,7 @@ export class NativeSession {
     });
   }
   send(pcm: Uint8Array): void {
-    if (this.closed || this.stopping) return;
+    if (!this.started || this.closed || this.stopping) return;
     const frame = Buffer.from(pcm);
     if (!frame.length || frame.length % 2 || frame.length > 32000) { this.interrupt('无效音频帧，转录已停止。'); return; }
     this.frames.push({ start: this.received, pcm: frame });
@@ -87,7 +104,12 @@ export class NativeSession {
   private reconnect(error?: AsrError): Promise<void> {
     if (this.closed) return Promise.resolve();
     if (this.recovery) return this.recovery;
+    const previous = this.connection;
     this.connection = null;
+    // Invalidate callbacks before closing an old, possibly still-running worker.
+    this.generation++;
+    previous?.close();
+    this.callbacks.diagnostic?.(error?.code ?? 'local_asr_recovery');
     if (error?.kind === 'fatal' || ++this.retries > 3) {
       this.interrupt('本地引擎无法恢复。已保存文字保留；未确认的音频可能缺失，请核对后继续。');
       return Promise.resolve();
@@ -109,6 +131,7 @@ export class NativeSession {
     if (this.finishing) return this.finishing;
     this.stopping = true;
     this.finishing = (async () => {
+      try {
       await this.recovery;
       if (this.closed) throw new Error('本地转录已中断，请核对末尾内容');
       let connection = this.connection;
@@ -118,9 +141,11 @@ export class NativeSession {
         connection = this.connection;
         ok = connection ? await connection.finish(15000) : false;
       }
-      this.closed = true; this.frames = []; this.startup.abort();
-      this.connection?.close(); this.connection = null;
       if (!ok) throw new Error('末尾音频未确认完成，请核对转录并补记缺失内容');
+      } finally {
+        this.closed = true; this.frames = []; this.startup.abort();
+        this.connection?.close(); this.connection = null;
+      }
     })();
     return this.finishing;
   }
