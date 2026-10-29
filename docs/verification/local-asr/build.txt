@@ -1,0 +1,40 @@
+
+> meetfolio@0.1.0 build
+> npm run build -w web && npm run build -w server
+
+
+> @meetfolio/web@0.1.0 build
+> tsc --noEmit && vite build
+
+vite v5.4.21 building for production...
+transforming...
+✓ 1969 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                           0.67 kB │ gzip:  0.53 kB
+dist/assets/index-RRfYMeNw.css           35.95 kB │ gzip:  6.93 kB
+dist/assets/Settings-DW0Co72M.js          4.89 kB │ gzip:  2.27 kB
+dist/assets/Workspace-2JwRzHRO.js        24.95 kB │ gzip:  9.54 kB
+dist/assets/ReferencePanel-C1f9jsXl.js   40.85 kB │ gzip: 14.28 kB
+dist/assets/Review-BdrHyjWX.js          179.44 kB │ gzip: 56.47 kB
+dist/assets/index-C2GCAMY_.js           294.16 kB │ gzip: 95.34 kB
+✓ built in 4.06s
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.1
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.1
+npm notice To update run: npm install -g npm@12.2.1
+npm notice
+
+> @meetfolio/server@0.1.0 build
+> tsc -p tsconfig.build.json
+
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.1
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.1
+npm notice To update run: npm install -g npm@12.2.1
+npm notice
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.1
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.1
+npm notice To update run: npm install -g npm@12.2.1
+npm notice

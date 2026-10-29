@@ -1,0 +1,46 @@
+name: X-ASR native smoke
+on:
+  pull_request:
+    paths:
+      - 'server/src/asr/**'
+      - 'server/scripts/**'
+      - 'server/test/xasr*'
+      - 'server/package.json'
+      - 'package-lock.json'
+      - '.github/workflows/xasr-native.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  native:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --include=optional
+      - run: npm run build -w server
+      - run: node server/scripts/check-xasr-runtime.mjs
+      - name: Download official pinned model (no cloud inference)
+        shell: bash
+        run: |
+          mkdir -p work
+          curl --fail --location --retry 3 --output work/xasr.tar.bz2 https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-x-asr-480ms-streaming-zipformer-transducer-zh-en-punct-int8-2026-06-05.tar.bz2
+      - name: Real model import, native load, sample transcription and lifecycle
+        run: node server/scripts/verify-xasr.mjs work/xasr.tar.bz2 work/ci-models work/native-smoke.json
+      - name: Interrupted transfer, stale lock and real native repair
+        run: node server/scripts/verify-xasr-recovery.mjs work/xasr.tar.bz2 work/recovery-models work/native-recovery.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: xasr-native-${{ matrix.os }}
+          path: |
+            work/native-smoke.json
+            work/native-recovery.json

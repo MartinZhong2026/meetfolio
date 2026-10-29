@@ -1,0 +1,11 @@
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import { verifyXAsrArchive } from '../../server/dist/asr/xasrManager.js';
+import { extractXAsrArchive } from '../../server/dist/asr/xasrArchive.js';
+import { XASR } from '../../server/dist/asr/localXasrModel.js';
+const [archive, destination] = process.argv.slice(2);
+if (!archive || !destination) throw new Error('Supply official archive and disposable output directory');
+await verifyXAsrArchive(archive);
+await fs.mkdir(destination, { recursive: true });
+await extractXAsrArchive(archive, destination);
+await fs.copyFile(path.join(destination, XASR.archive.replace(/\.tar\.bz2$/, ''), 'test_wavs/0.wav'), path.join(destination, 'speech.wav'));

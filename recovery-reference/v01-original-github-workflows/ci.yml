@@ -1,0 +1,68 @@
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: meetfolio
+          POSTGRES_PASSWORD: meetfolio
+          POSTGRES_DB: meetfolio_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U meetfolio" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgres://meetfolio:meetfolio@127.0.0.1:5432/meetfolio_test
+      E2E_DATABASE_URL: postgres://meetfolio:meetfolio@127.0.0.1:5432/meetfolio_e2e
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - name: Server tests (mocked providers; no paid calls)
+        run: npm run test -w server
+      - name: Web unit tests
+        run: npm run test -w web
+      - name: Build
+        run: npm run build
+      - name: Install Chromium for browser tests
+        run: npx playwright install --with-deps chromium
+      - name: Browser tests (1440 / 1024 / 390)
+        run: npm run test:e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-artifacts
+          path: web/test-results
+
+  desktop-ui:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Standalone local UI: deliberately no PostgreSQL, app backend or provider secrets.
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build:desktop
+      - run: npx playwright install --with-deps chromium
+      - name: Desktop UI, offline reload, recovery, accessibility and export
+        run: npm run test:desktop
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: desktop-ui-evidence
+          path: |
+            docs/desktop-screenshots/
+            web/test-results-desktop/

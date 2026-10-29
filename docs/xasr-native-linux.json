@@ -1,0 +1,129 @@
+{
+  "platform": "linux",
+  "arch": "x64",
+  "node": "v22.23.4",
+  "runtime": "1.13.8",
+  "tests": [
+    {
+      "sample": 0,
+      "audioMs": 10053.125,
+      "elapsedMs": 8495,
+      "text": "昨天是 Monday， today is 礼拜二， the day after tomorrow 是星期三",
+      "partials": 15,
+      "finals": [
+        {
+          "kind": "final",
+          "key": "0",
+          "text": "昨天是 Monday， today is 礼拜二， the day after tomorrow 是星期三",
+          "startMs": 0,
+          "endMs": 10053
+        }
+      ],
+      "hostTicks": 270,
+      "hostRss": 61087744,
+      "nativeMetrics": {
+        "rss": 354549760,
+        "maxRSS": 346240,
+        "userCPUTime": 10501621,
+        "systemCPUTime": 1604853
+      }
+    },
+    {
+      "sample": 1,
+      "audioMs": 5100,
+      "elapsedMs": 9947,
+      "text": "这是第一种， 第二种叫呃与 always， always 什么意思啊",
+      "partials": 8,
+      "finals": [
+        {
+          "kind": "final",
+          "key": "0",
+          "text": "这是第一种， 第二种叫呃与 always， always 什么意思啊",
+          "startMs": 0,
+          "endMs": 5100
+        }
+      ],
+      "hostTicks": 332,
+      "hostRss": 62005248,
+      "nativeMetrics": {
+        "rss": 352370688,
+        "maxRSS": 343984,
+        "userCPUTime": 7447833,
+        "systemCPUTime": 230694
+      }
+    },
+    {
+      "sample": 2,
+      "audioMs": 4690,
+      "elapsedMs": 10876,
+      "text": "就是平凡的啊， 不认识记下来， frequently 频繁的",
+      "partials": 9,
+      "finals": [
+        {
+          "kind": "final",
+          "key": "0",
+          "text": "就是平凡的啊， 不认识记下来， frequently 频繁的",
+          "startMs": 0,
+          "endMs": 4690
+        }
+      ],
+      "hostTicks": 377,
+      "hostRss": 62074880,
+      "nativeMetrics": {
+        "rss": 354299904,
+        "maxRSS": 345996,
+        "userCPUTime": 8445272,
+        "systemCPUTime": 448178
+      }
+    },
+    {
+      "sample": 3,
+      "audioMs": 8830,
+      "elapsedMs": 10807,
+      "text": "第一句是个什么时态？ 加了 yes 是一般现代时， 对， 我们把它时态写上去",
+      "partials": 11,
+      "finals": [
+        {
+          "kind": "final",
+          "key": "0",
+          "text": "第一句是个什么时态？ 加了 yes 是一般现代时， 对， 我们把它时态写上去",
+          "startMs": 0,
+          "endMs": 7400
+        }
+      ],
+      "hostTicks": 406,
+      "hostRss": 62730240,
+      "nativeMetrics": {
+        "rss": 352276480,
+        "maxRSS": 344020,
+        "userCPUTime": 10423337,
+        "systemCPUTime": 322311
+      }
+    }
+  ],
+  "failureRecoveryStates": [
+    "loading",
+    "error",
+    "loading",
+    "ready",
+    "installed",
+    "installed"
+  ],
+  "states": [
+    "installed",
+    "loading",
+    "ready",
+    "installed",
+    "loading",
+    "ready",
+    "installed",
+    "loading",
+    "ready",
+    "installed",
+    "loading",
+    "ready",
+    "installed"
+  ],
+  "network": "Transport disabled in manager; run this script in a network-disabled OS/container for stronger evidence",
+  "reference": "Fragment smoke assertions only; this is not a WER/CER accuracy benchmark"
+}

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 64 64" role="img" aria-labelledby="title">
+  <title id="title">Meetfolio — open research notebook</title>
+  <rect width="64" height="64" rx="14" fill="#355F52"/>
+  <g fill="#FFFFFF">
+    <path d="M13 18c7-1 13 1 17 5v24c-5-4-11-6-17-5V18Z"/>
+    <path d="M51 18c-7-1-13 1-17 5v24c5-4 11-6 17-5V18Z"/>
+  </g>
+</svg>

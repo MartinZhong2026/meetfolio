@@ -1,0 +1,137 @@
+{
+  "source": {
+    "job": "https://github.com/MartinZhong2003/meetfolio/actions/runs/40071826678/job/120806718193",
+    "commit": "0af42bccb9ba0dd80fe39538321050a81636e6b6",
+    "extraction": "JSON report from GitHub Actions Windows job stdout; timestamps removed"
+  },
+  "report": {
+    "platform": "win32",
+    "arch": "x64",
+    "node": "v22.23.4",
+    "runtime": "1.13.8",
+    "tests": [
+      {
+        "sample": 0,
+        "audioMs": 10053.125,
+        "elapsedMs": 5871,
+        "text": "昨天是 Monday， today is 礼拜二， the day after tomorrow 是星期三",
+        "partials": 15,
+        "finals": [
+          {
+            "kind": "final",
+            "key": "0",
+            "text": "昨天是 Monday， today is 礼拜二， the day after tomorrow 是星期三",
+            "startMs": 0,
+            "endMs": 10053
+          }
+        ],
+        "hostTicks": 225,
+        "hostRss": 47591424,
+        "nativeMetrics": {
+          "rss": 306483200,
+          "maxRSS": 299300,
+          "userCPUTime": 6593000,
+          "systemCPUTime": 250000
+        }
+      },
+      {
+        "sample": 1,
+        "audioMs": 5100,
+        "elapsedMs": 5285,
+        "text": "这是第一种， 第二种叫呃与 always， always 什么意思啊",
+        "partials": 8,
+        "finals": [
+          {
+            "kind": "final",
+            "key": "0",
+            "text": "这是第一种， 第二种叫呃与 always， always 什么意思啊",
+            "startMs": 0,
+            "endMs": 5100
+          }
+        ],
+        "hostTicks": 207,
+        "hostRss": 48316416,
+        "nativeMetrics": {
+          "rss": 306057216,
+          "maxRSS": 298884,
+          "userCPUTime": 4453000,
+          "systemCPUTime": 218000
+        }
+      },
+      {
+        "sample": 2,
+        "audioMs": 4690,
+        "elapsedMs": 4936,
+        "text": "就是平凡的啊， 不认识记下来， frequently 频繁的",
+        "partials": 9,
+        "finals": [
+          {
+            "kind": "final",
+            "key": "0",
+            "text": "就是平凡的啊， 不认识记下来， frequently 频繁的",
+            "startMs": 0,
+            "endMs": 4690
+          }
+        ],
+        "hostTicks": 202,
+        "hostRss": 49770496,
+        "nativeMetrics": {
+          "rss": 306483200,
+          "maxRSS": 299300,
+          "userCPUTime": 4640000,
+          "systemCPUTime": 187000
+        }
+      },
+      {
+        "sample": 3,
+        "audioMs": 8830,
+        "elapsedMs": 7343,
+        "text": "第一句是个什么时态？ 加了 yes 是一般现代时， 对， 我们把它时态写上去",
+        "partials": 11,
+        "finals": [
+          {
+            "kind": "final",
+            "key": "0",
+            "text": "第一句是个什么时态？ 加了 yes 是一般现代时， 对， 我们把它时态写上去",
+            "startMs": 0,
+            "endMs": 7400
+          }
+        ],
+        "hostTicks": 300,
+        "hostRss": 41889792,
+        "nativeMetrics": {
+          "rss": 306307072,
+          "maxRSS": 299128,
+          "userCPUTime": 5953000,
+          "systemCPUTime": 156000
+        }
+      }
+    ],
+    "failureRecoveryStates": [
+      "loading",
+      "error",
+      "loading",
+      "ready",
+      "installed",
+      "installed"
+    ],
+    "states": [
+      "not-installed",
+      "installed",
+      "loading",
+      "ready",
+      "installed",
+      "loading",
+      "ready",
+      "installed",
+      "loading",
+      "ready",
+      "installed",
+      "loading",
+      "ready",
+      "installed"
+    ],
+    "network": "Transport disabled in manager; run this script in a network-disabled OS/container for stronger evidence",
+    "reference": "Fragment smoke assertions only; this is not a WER/CER accuracy benchmark"
+  }
+}

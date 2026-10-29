@@ -1,0 +1,46 @@
+{
+  "source": {
+    "commit": "dcb6e9813e9aa1676501bcdc28c15f15c3a50cf2",
+    "job": "https://github.com/MartinZhong2003/meetfolio/actions/runs/40076211817/job/120819993885",
+    "extraction": "Actual installed application JSON report from Windows Actions stdout"
+  },
+  "report": {
+    "platform": "win32",
+    "packaged": true,
+    "executable": "D:\\a\\_temp\\Meetfolio 安装验证\\Meetfolio.exe",
+    "nativeAsr": true,
+    "microphone": "Chromium file-backed microphone using official X-ASR speech WAV; no physical hardware",
+    "physicalMicrophone": false,
+    "longInterviewQualified": false,
+    "runAsNode": true,
+    "linuxVerificationNoSandbox": false,
+    "stages": [
+      "automatic official model download and cancellation through native UI",
+      "native file picker import, integrity verification, installation and actual initialization",
+      "official download resumes retained bytes and repairs/reinitializes existing model",
+      "Windows outbound firewall blocks network for the installed app and its native helper before transcription",
+      "actual partial/final CPU inference; native child termination/replay; capture pause and final flush",
+      "notes/categories, preserved originals, nonoverlapping recovery/resume timestamps and TXT/Markdown/DOCX content",
+      "close-time flush and actual restart preserved the last unsaved draft, notebook and model"
+    ],
+    "applicationPathExcludesDeveloperTools": true,
+    "timestamps": [
+      {
+        "seq": 1,
+        "startMs": 0,
+        "endMs": 30400
+      },
+      {
+        "seq": 2,
+        "startMs": 30400,
+        "endMs": 60800
+      },
+      {
+        "seq": 3,
+        "startMs": 60800,
+        "endMs": 61636.6875
+      }
+    ],
+    "result": "passed"
+  }
+}

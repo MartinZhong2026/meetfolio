@@ -1,0 +1,112 @@
+name: Recovery verification
+on:
+  pull_request:
+  push:
+    branches: [main, recovery/complete-source]
+
+concurrency:
+  group: verify-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  baseline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: node --version && npm --version && npm ci
+      - name: Check editable-source whitespace
+        shell: bash
+        run: |
+          git fetch origin main:refs/remotes/origin/main
+          git diff --check "$(git merge-base HEAD origin/main)" HEAD -- . ':(exclude)recovery-reference/**' ':(exclude)docs/**' ':(exclude)RECOVERY_GAP_REPORT.md'
+      - run: npm run verify
+      - name: Check production and development dependency advisories
+        run: npm audit --audit-level=high
+
+  server:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: meetfolio
+          POSTGRES_PASSWORD: meetfolio
+          POSTGRES_DB: meetfolio_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U meetfolio -d meetfolio_test"
+          --health-interval 5s --health-timeout 5s --health-retries 12
+    env:
+      TEST_DATABASE_URL: postgres://meetfolio:meetfolio@127.0.0.1:5432/meetfolio_test
+      MEETFOLIO_ALLOW_TEST_DB_RESET: meetfolio_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Server tests against disposable database
+        run: npm run test -w server
+      - name: Repeat server tests to check reset and migrations
+        run: npm run test -w server
+
+  desktop-browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run build:desktop
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:desktop
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: desktop-browser-failures
+          path: web/test-results-desktop/
+
+  web-browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: meetfolio
+          POSTGRES_PASSWORD: meetfolio
+          POSTGRES_DB: meetfolio_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U meetfolio -d meetfolio_test"
+          --health-interval 5s --health-timeout 5s --health-retries 12
+    env:
+      E2E_DATABASE_URL: postgres://meetfolio:meetfolio@127.0.0.1:5432/meetfolio_e2e
+      MEETFOLIO_ALLOW_TEST_DB_RESET: meetfolio_e2e
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: web-browser-failures
+          path: web/test-results/

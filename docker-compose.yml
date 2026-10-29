@@ -1,0 +1,18 @@
+# Local development database only. The app itself runs with `npm run dev`.
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: meetfolio
+      POSTGRES_PASSWORD: meetfolio
+      POSTGRES_DB: meetfolio
+    ports:
+      - "5432:5432"
+    volumes:
+      - meetfolio-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U meetfolio"]
+      interval: 5s
+      retries: 10
+volumes:
+  meetfolio-db:

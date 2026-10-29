@@ -1,0 +1,9 @@
+{
+  "name": "@meetfolio/desktop",
+  "version": "0.5.1",
+  "private": true,
+  "description": "Meetfolio Desktop Lite: offline qualitative interview recording and transcription",
+  "author": "Martin Zhong",
+  "license": "MIT",
+  "main": "dist/main.cjs"
+}

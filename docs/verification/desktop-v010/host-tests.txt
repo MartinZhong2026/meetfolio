@@ -1,0 +1,30 @@
+
+> meetfolio@0.1.0 test:native-desktop
+> npm run test -w desktop
+
+
+> @meetfolio/desktop@0.1.0 test
+> vitest run
+
+[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
+
+ RUN  v2.1.9 /workspace/work/meetfolio-desktop/desktop
+
+ ✓ test/native-session.test.ts (3 tests) 13ms
+ ✓ test/policy.test.ts (3 tests) 4ms
+
+ Test Files  2 passed (2)
+      Tests  6 passed (6)
+   Start at  07:40:15
+   Duration  558ms (transform 99ms, setup 0ms, collect 104ms, tests 17ms, environment 0ms, prepare 144ms)
+
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.1
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.1
+npm notice To update run: npm install -g npm@12.2.1
+npm notice
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.1
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.1
+npm notice To update run: npm install -g npm@12.2.1
+npm notice

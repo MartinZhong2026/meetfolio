@@ -1,0 +1,45 @@
+node_modules
+dist
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+server/.data
+web/test-results
+web/playwright-report
+coverage
+
+# Desktop UI local verification
+work/
+web/dist-desktop/
+web/test-results-desktop/
+
+# Native desktop bundles, caches and temporary test profiles
+desktop/dist/
+desktop/test-results/
+
+# Never commit signing identities or private certificate containers
+*.pfx
+*.p12
+
+# Local user data, recordings, credentials and build caches
+*.wav
+*.mp3
+*.m4a
+*.webm
+*.sqlite
+*.sqlite3
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.key
+*.pem
+user-data/
+recordings/
+uploads/
+.cache/
+.npm/
+*.tsbuildinfo
+BACKUP_LOCATION.txt

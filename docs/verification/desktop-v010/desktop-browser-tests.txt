@@ -1,0 +1,41 @@
+
+> meetfolio@0.1.0 test:desktop
+> npm run test:desktop -w web
+
+
+> @meetfolio/web@0.1.0 test:desktop
+> playwright test --config playwright.desktop.config.ts
+
+[WebServer] (node:16665) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] (node:16678) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 10 tests using 1 worker
+
+(node:16697) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   1 [laptop-1366] › desktop-e2e/desktop.spec.ts:22:1 › reference stages, offline notes and evidence, honest model state, edited exports and restart (6.8s)
+  ✓   2 [laptop-1366] › desktop-e2e/desktop.spec.ts:142:1 › unsaved data, retry, backup restoration copies and two-tab safety (2.9s)
+  ✓   3 [laptop-1366] › desktop-e2e/desktop.spec.ts:255:1 › native bridge contract: download, permission denial, interruption and reload recovery (3.9s)
+  ✓   4 [laptop-1366] › desktop-e2e/desktop.spec.ts:310:1 › model readiness is rechecked, mobile layout and explicit no-runtime recording block (1.8s)
+  ✓   5 [laptop-1366] › desktop-e2e/desktop.spec.ts:341:1 › cached ready badge cannot bypass a runtime model revocation (1.2s)
+(node:17025) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   6 [desktop-1920] › desktop-e2e/desktop.spec.ts:22:1 › reference stages, offline notes and evidence, honest model state, edited exports and restart (7.2s)
+  ✓   7 [desktop-1920] › desktop-e2e/desktop.spec.ts:142:1 › unsaved data, retry, backup restoration copies and two-tab safety (2.9s)
+  ✓   8 [desktop-1920] › desktop-e2e/desktop.spec.ts:255:1 › native bridge contract: download, permission denial, interruption and reload recovery (3.8s)
+  ✓   9 [desktop-1920] › desktop-e2e/desktop.spec.ts:310:1 › model readiness is rechecked, mobile layout and explicit no-runtime recording block (1.7s)
+  ✓  10 [desktop-1920] › desktop-e2e/desktop.spec.ts:341:1 › cached ready badge cannot bypass a runtime model revocation (1.3s)
+
+  10 passed (36.8s)
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.1
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.1
+npm notice To update run: npm install -g npm@12.2.1
+npm notice
+npm notice
+npm notice New major version of npm available! 11.9.0 -> 12.2.1
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.1
+npm notice To update run: npm install -g npm@12.2.1
+npm notice

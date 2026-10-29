@@ -1,0 +1,8 @@
+{
+  "result": "passed",
+  "source": "Chromium file-backed microphone, official speech sample 0.wav",
+  "flow": "getUserMedia → AudioWorklet → PCM16 → WebSocket → native CPU inference → persisted transcript → review",
+  "physicalMicrophone": false,
+  "cloudAsr": false,
+  "windowsTest": false
+}
