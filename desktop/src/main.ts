@@ -7,6 +7,7 @@ import fs from 'node:fs/promises';
 import type { XAsrModelManager, XAsrStatus } from '../../server/src/asr/xasrManager.js';
 import { NativeSession } from './native-session.js';
 import { CHANNEL, isAppUrl, validAudio, validSession, validExport } from './policy.js';
+import { Diagnostics, asrDiagnostic } from './diagnostics.js';
 
 protocol.registerSchemesAsPrivileged([{ scheme: 'meetfolio', privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true } }]);
 app.setName('Meetfolio');
@@ -14,11 +15,13 @@ if (process.platform === 'win32') app.setAppUserModelId('org.meetfolio.desktop')
 const verification = app.commandLine.hasSwitch('verification');
 if (process.platform === 'win32' && process.env.LOCALAPPDATA) app.setPath('userData', path.join(process.env.LOCALAPPDATA, 'Meetfolio'));
 if (verification && process.env.MEETFOLIO_USER_DATA) app.setPath('userData', path.resolve(process.env.MEETFOLIO_USER_DATA));
+const diagnostics = new Diagnostics(path.join(app.getPath('userData'), 'diagnostics'), !app.isPackaged);
 const gotLock = app.requestSingleInstanceLock();
 let window: BrowserWindow | null = null;
 let windowReady = false;
 let model: XAsrModelManager;
 let recording: NativeSession | null = null;
+let starting = false;
 let initializing: Promise<void> | null = null;
 let microphoneUntil = 0;
 let quitting = false;
@@ -44,14 +47,27 @@ async function ensureLoaded(): Promise<void> {
   await initializing;
 }
 function handle(channel: string, fn: (arg: unknown) => unknown) {
-  ipcMain.handle(channel, async (event, arg) => { trusted(event); return fn(arg); });
+  ipcMain.handle(channel, async (event, arg) => {
+    try {
+      trusted(event);
+      if (channel !== CHANNEL.import && channel !== CHANNEL.save && channel !== CHANNEL.stop && arg !== undefined) throw new Error('Unexpected IPC argument');
+    } catch (error) { diagnostics.record('ipc_error'); throw error; }
+    try { return await fn(arg); }
+    catch (error) {
+      if (channel === CHANNEL.start) diagnostics.record('native_init');
+      else if (channel === CHANNEL.stop) diagnostics.record('cleanup_failure');
+      else if (channel === CHANNEL.permission) diagnostics.record('microphone_permission');
+      else if (channel !== CHANNEL.save) diagnostics.record('model_load');
+      throw error;
+    }
+  });
 }
 async function boot(): Promise<void> {
   const runtime = app.isPackaged ? path.join(root, 'xasr/asr/xasrManager.js') : path.join(root, 'server/dist/asr/xasrManager.js');
   // Keep the verified engine and all adjacent native modules on the real filesystem, outside ASAR.
   const { XAsrModelManager } = await import(pathToFileURL(runtime).href);
   model = new XAsrModelManager({ root: path.join(app.getPath('userData'), 'models'), fetch: net.fetch.bind(net) });
-  model.on('status', status => emit({ type: 'model', status: mappedStatus(status) }));
+  model.on('status', status => { if (status.state === 'error') diagnostics.record('model_load'); emit({ type: 'model', status: mappedStatus(status) }); });
   protocol.handle('meetfolio', async request => {
     const url = new URL(request.url);
     if (!isAppUrl(request.url) || request.method !== 'GET') return new Response('Forbidden', { status: 403 });
@@ -81,7 +97,7 @@ async function boot(): Promise<void> {
     title: 'Meetfolio', backgroundColor: '#f5f4ed', autoHideMenuBar: true,
     webPreferences: { preload: path.join(__dirname, 'preload.cjs'), contextIsolation: true, sandbox: true, nodeIntegration: false, webSecurity: true },
   });
-  window.once('ready-to-show', () => { windowReady = true; if (!quitting) { window?.show(); window?.focus(); } });
+  window.once('ready-to-show', () => { windowReady = true; if (!quitting && !verification) { window?.show(); window?.focus(); } });
   window.webContents.on('will-prevent-unload', event => {
     // The browser-only dirty guard can lag React's state update after the durable close flush.
     // Override it only after the host confirmed persistence, or the user explicitly chose Exit.
@@ -90,7 +106,7 @@ async function boot(): Promise<void> {
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   window.webContents.on('will-navigate', (event, url) => { if (!isAppUrl(url)) event.preventDefault(); });
   const interrupt = () => { recording?.abort('窗口重新载入，语音记录已中断。请核对已保存的末尾文字。'); recording = null; };
-  window.webContents.on('render-process-gone', interrupt);
+  window.webContents.on('render-process-gone', () => { diagnostics.record('child_exit'); interrupt(); });
   window.webContents.on('did-start-navigation', (_event, _url, _inPlace, mainFrame) => { if (mainFrame) interrupt(); });
   handle(CHANNEL.status, async () => { try { await ensureLoaded(); } catch {} return mappedStatus(model.getStatus()); });
   handle(CHANNEL.download, async () => { if (recording) throw new Error('请先停止记录'); await initializing; await model.download(); return mappedStatus(model.getStatus()); });
@@ -121,7 +137,10 @@ async function boot(): Promise<void> {
     return 'granted';
   });
   handle(CHANNEL.start, async () => {
-    if (recording) throw new Error('已有记录正在使用麦克风');
+    if (recording || starting) throw new Error('A microphone session is already starting or active');
+    if (Date.now() >= microphoneUntil) throw new Error('Request microphone permission before starting');
+    starting = true;
+    try {
     await ensureLoaded();
     if (model.getStatus().state !== 'ready') throw new Error('X-ASR 模型未成功初始化');
     const live = new NativeSession(model, {
@@ -129,16 +148,22 @@ async function boot(): Promise<void> {
       partial: result => emit({ type: 'partial', id: live.id, result }),
       interrupted: reason => { emit({ type: 'interruption', id: live.id, reason }); if (recording === live) recording = null; },
       recovering: () => emit({ type: 'recovering', id: live.id }),
+      diagnostic: code => diagnostics.record(asrDiagnostic(code)),
     });
     recording = live;
     try { await live.start(); return live.id; } catch (error) { live.abort('本地引擎启动失败'); recording = null; throw error; }
+    } finally { starting = false; }
+  });
+  ipcMain.on(CHANNEL.diagnostic, (event, code: unknown) => {
+    try { trusted(event); if (code === 'microphone_permission' || code === 'audio_capture' || code === 'ipc_error' || code === 'cleanup_failure') diagnostics.record(code); }
+    catch { diagnostics.record('ipc_error'); }
   });
   ipcMain.on(CHANNEL.audio, (event, packet: unknown) => {
     try {
       trusted(event);
-      if (!validAudio(packet) || !recording || packet.id !== recording.id) return;
+      if (!validAudio(packet) || !recording || packet.id !== recording.id) { diagnostics.record('ipc_error'); return; }
       recording.send(packet.pcm);
-    } catch { /* Invalid/unowned packets never reach the engine. */ }
+    } catch { diagnostics.record('ipc_error'); /* Invalid/unowned packets never reach the engine. */ }
   });
   handle(CHANNEL.stop, async id => {
     if (!validSession(id)) throw new Error('无效记录会话');
@@ -162,8 +187,8 @@ async function boot(): Promise<void> {
 }
 if (!gotLock) app.quit();
 else {
-  app.on('second-instance', () => { if (window && windowReady && !quitting) { if (window.isMinimized()) window.restore(); window.show(); window.focus(); } });
-  app.whenReady().then(boot).catch(error => { console.error('Desktop startup failed:', error); app.exit(1); });
+  app.on('second-instance', () => { if (window && windowReady && !quitting && !verification) { if (window.isMinimized()) window.restore(); window.show(); window.focus(); } });
+  app.whenReady().then(boot).catch(async () => { diagnostics.record('startup'); await diagnostics.flush(); console.error('Meetfolio startup failed; inspect the private diagnostics log'); app.exit(1); });
   app.on('window-all-closed', () => app.quit());
   app.on('before-quit', event => {
     if (quitAllowed) return;
@@ -186,8 +211,10 @@ else {
           buttons: ['返回应用', '仍然退出'], defaultId: 0, cancelId: 0 });
         if (result.response === 0) { quitting = false; return; }
       }
-      await recording?.stop().catch(() => {});
-      await model?.dispose();
+      await recording?.stop().catch(() => { diagnostics.record('cleanup_failure'); });
+      try { await model?.dispose(); } catch { diagnostics.record('cleanup_failure'); }
+      diagnostics.record('shutdown', 'info');
+      await diagnostics.flush();
       quitAllowed = true;
       app.quit();
     })();

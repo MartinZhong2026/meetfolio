@@ -5,6 +5,7 @@ import { createCloseRequestHandler } from './close-request';
 import type { DesktopRuntime } from '../../web/src/desktop/runtime';
 
 let active: { id: string; capture: MicCapture; stop: () => Promise<void> } | null = null;
+let starting = false;
 let flushNotebook: (() => Promise<boolean>) | null = null;
 const listeners = new Set<(event: any) => void>();
 const prepareClose = createCloseRequestHandler(() => flushNotebook !== null, async () => {
@@ -18,6 +19,7 @@ ipcRenderer.on(CHANNEL.event, (_event, message) => {
   else for (const listener of listeners) listener(message);
 });
 const invoke = (channel: string, arg?: unknown) => ipcRenderer.invoke(channel, arg);
+const diagnostic = (code: 'microphone_permission' | 'audio_capture' | 'ipc_error' | 'cleanup_failure') => ipcRenderer.send(CHANNEL.diagnostic, code);
 const runtime: DesktopRuntime = {
   version: 1,
   saveExport: (name, bytes) => invoke(CHANNEL.save, { name, bytes }),
@@ -47,11 +49,13 @@ const runtime: DesktopRuntime = {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       stream.getTracks().forEach(track => track.stop());
       return 'granted';
-    } catch (error) { return (error as DOMException).name === 'NotAllowedError' ? 'denied' : 'unavailable'; }
+    } catch (error) { diagnostic('microphone_permission'); return (error as DOMException).name === 'NotAllowedError' ? 'denied' : 'unavailable'; }
   },
   startTranscription: async callbacks => {
-    if (active) throw new Error('麦克风正在使用中');
-    const id = await invoke(CHANNEL.start);
+    if (active || starting) throw new Error('Microphone session is already starting or active');
+    starting = true;
+    let id: string;
+    try { id = await invoke(CHANNEL.start); } catch (error) { starting = false; diagnostic('ipc_error'); throw error; }
     const capture = new MicCapture();
     let stopped: Promise<void> | null = null;
     const listener = (event: any) => {
@@ -71,8 +75,9 @@ const runtime: DesktopRuntime = {
       if (stopped) return stopped;
       stopped = (async () => {
         // Flush the capture worklet first, then native inference. Keep final callbacks until both finish.
-        await capture.stop();
-        try { await invoke(CHANNEL.stop, id); }
+        let captureError: unknown;
+        try { await capture.stop(); } catch (error) { captureError = error; diagnostic('cleanup_failure'); }
+        try { await invoke(CHANNEL.stop, id); if (captureError) throw captureError; }
         finally { listeners.delete(listener); if (active?.id === id) active = null; }
       })();
       return stopped;
@@ -80,9 +85,11 @@ const runtime: DesktopRuntime = {
     active = { id, capture, stop };
     try {
       await capture.start(pcm => ipcRenderer.send(CHANNEL.audio, { id, pcm: new Uint8Array(pcm.buffer, pcm.byteOffset, pcm.byteLength) }), () => {
-        void stop().finally(() => callbacks.onInterruption('麦克风设备已断开。已保存文字保留，请核对末尾内容。')).catch(() => {});
+        diagnostic('audio_capture');
+        void stop().finally(() => callbacks.onInterruption('Audio capture stopped or the microphone disconnected. Confirmed text is preserved; review the end before resuming.')).catch(() => {});
       });
-    } catch (error) { await stop().catch(() => {}); throw error; }
+    } catch (error) { diagnostic('audio_capture'); await stop().catch(() => {}); throw error; }
+    finally { starting = false; }
     return { stop };
   },
 };

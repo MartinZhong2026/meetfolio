@@ -1,5 +1,11 @@
 # Meetfolio v0.1 → v0.6.0｜更新历程、源码差异与增量重建审计
 
+## Phase 3A 原生链路（2026-10-29）
+
+从 Phase 2 的已验证提交 `72aee93` 独立建立开发分支。已修复启动竞争、采集失败后的资源释放、44.1/48 kHz 采样位置漂移、未确认推理积压检测和重放连接清理，并增加缓存文件摘要与不含访谈内容的有界诊断日志。Windows 本地已有真实 Electron/Preload/原生模块加载及公开测试音频识别证据；未签名安装器仅完成构建/静态检查，没有安装到日常目录。详情见 [审计](docs/engineering/PHASE3A_AUDIT.md) 与 [Windows 验收清单](docs/engineering/PHASE3A_WINDOWS_ACCEPTANCE.md)。
+
+物理麦克风、纯中文/纯英文各 30 秒、实际断网、10/30 分钟稳定性、安装/卸载生命周期仍为 **Not verified**。WAV 持久录音、逐句回放等缺口仍在 Phase 3B 范围；不得以文件音频测试或新 CI 代替真实设备验收。
+
 ## Phase 2 工程状态（2026-10-28）
 
 以下结果是 Windows、本地 Node 22.23.4 / npm 11.19.0 的检查，不能替代 GitHub Actions 或真实桌面验收：

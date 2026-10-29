@@ -7,7 +7,7 @@ import lockfile from 'proper-lockfile';
 import { Readable, Transform } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { LocalXAsrProvider } from './localXasr.js';
-import { XASR, XASR_URL, defaultXAsrRoot, modelFiles } from './localXasrModel.js';
+import { XASR, XASR_URL, defaultXAsrRoot, modelFiles, sealModelCache, verifyModelCache } from './localXasrModel.js';
 import { extractXAsrArchive } from './xasrArchive.js';
 import { AsrError, type AsrProvider, type AsrConnection, type AsrHandlers, type AsrConnectOptions } from './types.js';
 
@@ -167,6 +167,7 @@ export class XAsrModelManager extends EventEmitter implements AsrProvider {
       await extractXAsrArchive(archive, staging, signal);
       const extracted = path.join(staging, XASR.archive.replace(/\.tar\.bz2$/, ''));
       modelFiles(extracted);
+      await sealModelCache(extracted);
       signal.throwIfAborted();
       const existing = await lstat(this.modelDir).catch(error => {
         if (error.code === 'ENOENT') return undefined;
@@ -199,6 +200,7 @@ export class XAsrModelManager extends EventEmitter implements AsrProvider {
     if (!this.installed()) { this.update('not-installed'); throw new Error('Install the X-ASR model first'); }
     this.update('loading');
     try {
+      await verifyModelCache(this.modelDir);
       this.warm = await this.makeProvider(this.modelDir).connect({ sampleRate: 16000, terms: [], languageHints: ['zh', 'en'] }, {
         onResult: result => this.handlers?.onResult(result),
         onClosed: info => {

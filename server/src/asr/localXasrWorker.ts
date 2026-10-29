@@ -26,11 +26,15 @@ let utteranceStartMs = 0;
 let utteranceIndex = 0;
 let lastText = '';
 let ended = false;
+let initializationStage: 'module' | 'model' | 'ready' = 'module';
 
 const milliseconds = () => Math.round(receivedSamples / 16);
 const postError = (e: unknown) => {
-  const msg = e instanceof Error ? e.message : 'Unknown local ASR error';
-  port.postMessage({ type: 'error', message: msg.slice(0, 220) });
+  const code = e && typeof e === 'object' && 'code' in e && e.code === 'MODULE_NOT_FOUND'
+    ? 'local_asr_native_missing' : initializationStage === 'module' ? 'local_asr_native_init'
+      : initializationStage === 'model' ? 'local_asr_model_load' : 'local_asr_runtime_error';
+  // Native errors can contain filesystem paths or input details. Only fixed codes cross the boundary.
+  port.postMessage({ type: 'error', code });
 };
 const emitFinal = () => {
   const endMs = milliseconds();
@@ -55,6 +59,7 @@ const decodeAvailable = () => {
 try {
   const load = createRequire(import.meta.url);
   const sherpa = load('sherpa-onnx-node') as { OnlineRecognizer: new (config: object) => Recognizer };
+  initializationStage = 'model';
   recognizer = new sherpa.OnlineRecognizer({
     featConfig: { sampleRate: 16000, featureDim: 80 },
     modelConfig: {
@@ -71,6 +76,7 @@ try {
     rule3MinUtteranceLength: 30,
   });
   stream = recognizer.createStream();
+  initializationStage = 'ready';
   port.postMessage({ type: 'ready' });
 } catch (e) {
   postError(e);

@@ -30,6 +30,8 @@ npm run verify
 
 Server database tests and browser tests are separate because they require disposable infrastructure. The browser preview is not proof that the native X-ASR engine works. Do not use a recovery build with real interview data before microphone, storage, export, packaging and privacy tests have passed.
 
+Phase 3A tracks the [native architecture audit](docs/engineering/PHASE3A_AUDIT.md) and [Windows acceptance checklist](docs/engineering/PHASE3A_WINDOWS_ACCEPTANCE.md). `npm run test:native-runtime` runs model-cache and child-process lifecycle tests without PostgreSQL; `npm run test:electron-smoke` starts real Electron in a fresh disposable profile. File-backed test audio is automation evidence, and physical microphone/long-session acceptance remains separate.
+
 ## Getting started / re-upload
 
 Read [UPLOAD-TO-GITHUB-WINDOWS.md](UPLOAD-TO-GITHUB-WINDOWS.md). Import **the extracted directory** into GitHub Desktop instead of uploading this ZIP as a single file. Publish **private first**, inspect files and licenses, then choose whether to make the repository public.

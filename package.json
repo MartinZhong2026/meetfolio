@@ -31,7 +31,9 @@
     "test:native-desktop": "npm run test -w desktop",
     "verify": "npm run check:db-safety && npm run typecheck && npm run test -w web && npm run test -w desktop && npm run build && npm run build:electron && npm run check:artifacts",
     "check:db-safety": "tsx server/test/database-safety.check.ts",
-    "check:artifacts": "node scripts/check-artifacts.mjs"
+    "check:artifacts": "node scripts/check-artifacts.mjs",
+    "test:native-runtime": "npm run test -w server -- --config vitest.native.config.ts",
+    "test:electron-smoke": "node desktop/scripts/native-smoke.mjs"
   },
   "devDependencies": {
     "concurrently": "^9.0.0"

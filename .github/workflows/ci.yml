@@ -27,6 +27,8 @@ jobs:
           git fetch origin main:refs/remotes/origin/main
           git diff --check "$(git merge-base HEAD origin/main)" HEAD -- . ':(exclude)recovery-reference/**' ':(exclude)docs/**' ':(exclude)RECOVERY_GAP_REPORT.md'
       - run: npm run verify
+      - name: Native lifecycle and model-cache tests without database
+        run: npm run test -w server -- --config vitest.native.config.ts
       - name: Check production and development dependency advisories
         run: npm audit --audit-level=high
 
@@ -110,3 +112,43 @@ jobs:
         with:
           name: web-browser-failures
           path: web/test-results/
+
+  windows-native:
+    runs-on: windows-latest
+    timeout-minutes: 35
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci --include=optional
+      - run: npm run build:electron
+      - run: node server/scripts/check-xasr-runtime.mjs
+      - run: npm run test -w server -- --config vitest.native.config.ts
+      - run: npm run test -w desktop
+      - name: Verify official model and prepare public speech fixture
+        run: node desktop/scripts/prepare-native-fixture.mjs
+      - name: Actual Electron, native inference and file-backed microphone (no physical device)
+        shell: pwsh
+        run: |
+          $fixture = Get-Content -Raw work/phase3a/ci-fixture/fixture.json | ConvertFrom-Json
+          node desktop/scripts/native-smoke.mjs --archive $fixture.archive --audio $fixture.audio --out work/phase3a/ci-smoke
+      - name: Build unsigned review installer without installing or publishing
+        run: npx electron-builder --win nsis --x64 --config desktop/electron-builder.yml --publish never
+      - run: node desktop/scripts/check-review-package.mjs
+      - name: Verify unpacked packaged runtime without installing
+        shell: pwsh
+        run: |
+          $fixture = Get-Content -Raw work/phase3a/ci-fixture/fixture.json | ConvertFrom-Json
+          node desktop/scripts/native-smoke.mjs --executable work/desktop-packages/win-unpacked/Meetfolio.exe --archive $fixture.archive --audio $fixture.audio --out work/phase3a/ci-packaged-smoke
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: windows-native-status-only
+          path: |
+            work/phase3a/ci-smoke/native-smoke.json
+            work/phase3a/ci-packaged-smoke/native-smoke.json
+            work/desktop-packages/static-review.json

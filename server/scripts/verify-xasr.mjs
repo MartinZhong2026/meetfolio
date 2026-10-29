@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { XAsrModelManager } from '../dist/asr/xasrManager.js';
-import { XASR } from '../dist/asr/localXasrModel.js';
+import { XASR, sealModelCache } from '../dist/asr/localXasrModel.js';
 import { LocalXAsrProvider } from '../dist/asr/localXasr.js';
 const [archive, root, reportFile] = process.argv.slice(2);
 assert(archive && root, 'Usage: node server/scripts/verify-xasr.mjs <pinned archive> <empty app-data directory> [report.json]');
@@ -65,6 +65,7 @@ try {
   const invalidDir = path.join(root, 'invalid-model-fixture');
   await fs.mkdir(invalidDir, { recursive: true });
   for (const file of Object.values(XASR.files)) await fs.writeFile(path.join(invalidDir, file), 'invalid native model fixture');
+  await sealModelCache(invalidDir);
   const failedStates = [];
   const failed = new XAsrModelManager({ root: path.join(root, 'failure'), modelDir: invalidDir });
   failed.on('status', s => failedStates.push(s.state));
@@ -73,6 +74,8 @@ try {
   assert(!failedStates.includes('ready'));
   // Repair the model directory and retry in the same manager to verify recovery.
   for (const file of Object.values(XASR.files)) await fs.copyFile(path.join(manager.modelDir, file), path.join(invalidDir, file));
+  await fs.rm(path.join(invalidDir, '.meetfolio-integrity.json'));
+  await sealModelCache(invalidDir);
   await failed.initialize(); assert.equal(failed.getStatus().state, 'ready');
   await failed.dispose();
   report.failureRecoveryStates = failedStates;

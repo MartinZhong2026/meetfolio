@@ -8,6 +8,7 @@ export function ModelCard({ runtime: r }: { runtime: ReturnType<typeof useLocalR
       <div className="dt-eyebrow">ON YOUR DEVICE</div>
       <h2>Offline speech model</h2>
       <p className="dt-muted">The installed desktop runtime must verify the model and microphone before transcription.</p>
+      <p className="dt-fine">The first model download connects to the official GitHub release. You can also import the official archive. Speech recognition runs on this device.</p>
       <div className="dt-model-box">
         <div><strong><ShieldCheck size={16}/>{r.ready ? r.model?.modelId : 'Local offline speech model'}</strong>
           <span className={`dt-chip ${!r.ready ? 'warning' : ''}`}>

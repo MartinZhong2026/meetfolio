@@ -3,7 +3,7 @@ import { mkdtemp, mkdir, writeFile, rm, stat, truncate, readFile, utimes } from 
 import os from 'node:os';
 import path from 'node:path';
 import { XAsrModelManager, verifyXAsrArchive } from '../src/asr/xasrManager.js';
-import { XASR, modelFiles } from '../src/asr/localXasrModel.js';
+import { XASR, modelFiles, sealModelCache, verifyModelCache } from '../src/asr/localXasrModel.js';
 import type { AsrConnection, AsrHandlers, AsrProvider } from '../src/asr/types.js';
 import { createAsrFactory } from '../src/asr/factory.js';
 import { loadConfig } from '../src/config.js';
@@ -14,6 +14,7 @@ async function root() { const p = await mkdtemp(path.join(os.tmpdir(), 'meetfoli
 async function installed(root: string) {
   const dir = path.join(root, XASR.id); await mkdir(dir);
   for (const name of Object.values(XASR.files)) await writeFile(path.join(dir, name), 'test fixture, not ONNX');
+  await sealModelCache(dir);
   return dir;
 }
 function fakeNative(failure = false) {
@@ -66,6 +67,15 @@ describe('X-ASR manager lifecycle (injected native test double)', () => {
 });
 
 describe('pinned downloads and recovery', () => {
+  it('detects non-empty model tampering and rejects unverified legacy caches without deleting them', async () => {
+    const r = await root(), dir = await installed(r);
+    await verifyModelCache(dir);
+    await writeFile(path.join(dir, XASR.files.encoder), 'changed fixture, still non-empty');
+    await expect(verifyModelCache(dir)).rejects.toThrow('mismatch');
+    await rm(path.join(dir, '.meetfolio-integrity.json'));
+    await expect(verifyModelCache(dir)).rejects.toThrow('import or repair');
+    expect((await stat(path.join(dir, XASR.files.encoder))).size).toBeGreaterThan(0);
+  });
   it('reports a failed download and retries from retained bytes with a Range request', async () => {
     const r = await root(); await writeFile(path.join(r, `${XASR.id}.part`), 'partial');
     const fetcher = vi.fn<typeof fetch>().mockResolvedValueOnce(new Response('', { status: 503 })).mockResolvedValueOnce(new Response('', { status: 503 }));
