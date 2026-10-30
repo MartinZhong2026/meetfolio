@@ -32,6 +32,8 @@ Server database tests and browser tests are separate because they require dispos
 
 Phase 3A tracks the [native architecture audit](docs/engineering/PHASE3A_AUDIT.md) and [Windows acceptance checklist](docs/engineering/PHASE3A_WINDOWS_ACCEPTANCE.md). `npm run test:native-runtime` runs model-cache and child-process lifecycle tests without PostgreSQL; `npm run test:electron-smoke` starts real Electron in a fresh disposable profile. File-backed test audio is automation evidence, and physical microphone/long-session acceptance remains separate.
 
+[Phase 3B1](docs/engineering/PHASE3B_RECORDING.md) adds per-capture local WAV persistence, explicit interrupted-file recovery, native WAV export and sample-relative transcript audio identities. Open **Local storage & backup info** to list/export recordings. JSON backups and document exports **do not include WAVs**; export audio separately. Per-segment playback and combined audio backup/restore remain pending. No physical microphone, long-session or installation acceptance is implied.
+
 ## Getting started / re-upload
 
 Read [UPLOAD-TO-GITHUB-WINDOWS.md](UPLOAD-TO-GITHUB-WINDOWS.md). Import **the extracted directory** into GitHub Desktop instead of uploading this ZIP as a single file. Publish **private first**, inspect files and licenses, then choose whether to make the repository public.

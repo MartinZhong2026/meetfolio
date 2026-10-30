@@ -19,6 +19,10 @@ export function useLocalRuntime(patch: Patch) {
     'unknown' | 'requesting' | 'granted' | 'denied' | 'unavailable'
   >('unknown');
   const session = useRef<LocalSession | null>(null);
+  const stopping = useRef<Promise<void> | null>(null);
+  const endRequested = useRef(false);
+  const starting = useRef(false);
+  const [settling, setSettling] = useState(false);
   const token = useRef(0);
   const clock = useRef<ReturnType<typeof setInterval>>();
   const stopClock = () => {
@@ -76,15 +80,22 @@ export function useLocalRuntime(patch: Patch) {
     }
   }
   const download = () => install('download');
-  async function stop(id: string, ended = false) {
+  function stop(id: string, ended = false): Promise<void> {
+    endRequested.current ||= ended;
+    if (stopping.current) return stopping.current;
     stopClock();
-    try {
-      await session.current?.stop();
+    const live = session.current;
+    const currentToken = token.current;
+    setSettling(true);
+    stopping.current = (async () => { try {
+      await live?.stop();
+      if (currentToken !== token.current) return;
       setPartial(null);
       token.current++;
       session.current = null;
-      patch(id, (i) => ({ ...i, recording: ended ? 'ended' : 'paused' }));
+      patch(id, (i) => ({ ...i, recording: endRequested.current ? 'ended' : 'paused' }));
     } catch {
+      if (currentToken !== token.current) return;
       token.current++;
       session.current = null;
       patch(id, (i) => ({
@@ -93,11 +104,13 @@ export function useLocalRuntime(patch: Patch) {
         interruption:
           'Error stopping local transcription. Review recent text; unconfirmed audio may be lost.',
       }));
-    }
+    } finally { stopping.current = null; endRequested.current = false; setSettling(false); } })();
+    return stopping.current;
   }
   async function start(i: Interview) {
     const r = localRuntime();
-    if (!r || !i.consent) return;
+    if (!r || !i.consent || starting.current || stopping.current || session.current) return;
+    starting.current = true;
     patch(i.id, (current) => ({ ...current, recording: 'starting' }));
     const currentToken = ++token.current;
     const sessionId = uuid();
@@ -170,6 +183,7 @@ export function useLocalRuntime(patch: Patch) {
                   isImportant: false,
                   source: 'local',
                   updatedAt: new Date().toISOString(),
+                  ...(segment.audio ? { audio: segment.audio } : {}),
                 },
               ],
             };
@@ -181,7 +195,7 @@ export function useLocalRuntime(patch: Patch) {
         },
         onRecovering: () => setRuntimeError('Local engine recovering; unconfirmed audio temporarily buffered.'),
         onInterruption: interrupt,
-      });
+      }, { interviewId: i.id });
       if (currentToken !== token.current) {
         await live.stop();
         return;
@@ -206,10 +220,11 @@ export function useLocalRuntime(patch: Patch) {
       interrupt(
         'Cannot start transcription. Check model and microphone permissions; saved data is unaffected.',
       );
-    }
+    } finally { starting.current = false; }
   }
   return {
     model,
+    settling,
     partial,
     checking,
     downloading,

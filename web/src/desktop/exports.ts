@@ -10,10 +10,11 @@ export function exportText(i: Interview, markdown = false) {
         ? 'DEMO / synthetic — Fictional content; no real speech recognition or AI.'
         : 'Local research record — Review manually; ASR and manual segments are distinguished.',
       `Participant: ${i.participant}`,
+      'Audio files are not included in this document. Export local WAV recordings separately; file times below are relative to each capture.',
       h('Transcript and edits'),
       ...i.segments.map(
         (s) =>
-          `${markdown ? `<a id="seg-${s.seq}"></a>\n` : ''}[${fmtClock(s.startMs)}] ${s.speakerLabel || 'Unlabeled'} (${s.source})${s.isImportant ? ' ★' : ''}：${effectiveText(s)}${s.editedText !== null ? `\nOriginal text: ${s.originalText}` : ''}`,
+          `${markdown ? `<a id="seg-${s.seq}"></a>\n` : ''}[${fmtClock(s.startMs)}] ${s.speakerLabel || 'Unlabeled'} (${s.source})${s.isImportant ? ' ★' : ''}：${effectiveText(s)}${s.editedText !== null ? `\nOriginal text: ${s.originalText}` : ''}${s.audio ? `\nWAV: ${s.audio.recordingId}; file time ${s.audio.startMs}–${s.audio.endMs} ms` : ''}`,
       ),
       i.manualDraft ? `Unfinished manual transcript draft: ${i.manualDraft}` : '',
       h('Researcher notes'),

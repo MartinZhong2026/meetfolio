@@ -5,6 +5,21 @@ import { readNotebook, writeNotebook } from './persistence';
 import { exportText } from './exports';
 import { confirmedModel } from './runtime';
 describe('local research persistence and recovery', () => {
+  it('preserves optional file-relative WAV evidence across IndexedDB and JSON without requiring it on legacy records', async () => {
+    const i = syntheticInterview();
+    const audio = { recordingId: '01234567-89ab-cdef-0123-456789abcdef', startMs: 100.0625, endMs: 200.125 };
+    i.segments[0].audio = audio;
+    const book = { schema: 1 as const, activeId: i.id, interviews: [i] };
+    expect(parseNotebook(JSON.parse(JSON.stringify(book))).interviews[0].segments[0].audio).toEqual(audio);
+    await writeNotebook(book);
+    expect((await readNotebook()).interviews[0].segments[0].audio).toEqual(audio);
+    expect(exportText(i, true)).toContain(`WAV: ${audio.recordingId}; file time 100.0625–200.125 ms`);
+    for (const invalid of [{ ...audio, recordingId: '../audio' }, { ...audio, startMs: -1 }, { ...audio, endMs: 0 }, { ...audio, startMs: NaN }]) {
+      expect(() => parseNotebook({ ...book, interviews: [{ ...i, segments: [{ ...i.segments[0], audio: invalid }] }] })).toThrow();
+    }
+    delete i.segments[0].audio;
+    expect(parseNotebook(book).interviews[0].segments[0].audio).toBeUndefined();
+  });
   it('round-trips drafts, categories and corrected/original transcript without losing evidence', async () => {
     const i = syntheticInterview();
     i.segments[1].editedText = '人工校对版本';

@@ -5,7 +5,7 @@ import { parseArgs } from 'node:util';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import assert from 'node:assert/strict';
-import { spawn } from 'node:child_process';
+import { spawn, execFileSync } from 'node:child_process';
 
 const { values } = parseArgs({ options: { executable: { type: 'string' }, archive: { type: 'string' }, audio: { type: 'string' }, out: { type: 'string', default: 'work/phase3a' } } });
 assert.equal(!!values.archive, !!values.audio, 'Supply both the verified model archive and a public test WAV, or neither');
@@ -20,6 +20,7 @@ const launch = async () => {
   instance = await _electron.launch({ executablePath: values.executable ? path.resolve(values.executable) : electron, args: [...(values.executable ? [] : ['desktop']), '--verification',
     '--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream',
     ...(values.audio ? [`--use-file-for-fake-audio-capture=${path.resolve(values.audio)}`] : [])], env, timeout: 60000 });
+  instance.process().once('exit', code => console.log(`Verification Electron exited: ${code}`));
   const page = await instance.firstWindow();
   await expect(page.getByTestId('desktop-save-status')).toHaveText('Saved locally', { timeout: 30000 });
   assert.deepEqual(await page.evaluate(() => ({ node: typeof window.require, bridge: window.meetfolioDesktop?.version, secure: isSecureContext })),
@@ -72,21 +73,61 @@ try {
     await expect(page.locator('.dt-segment').first()).toBeVisible({ timeout: 60000 });
     await page.getByRole('button', { name: 'Pause transcription', exact: true }).click();
     await expect(page.getByTestId('desktop-recording-status')).toHaveText('Paused', { timeout: 30000 });
+    console.log('First native capture paused and WAV finalized');
+    const firstRecordings = await page.evaluate(() => window.meetfolioDesktop.listRecordings());
+    assert.equal(firstRecordings.length, 1);
+    assert.equal(firstRecordings[0].status, 'complete');
+    assert(firstRecordings[0].bytes > 0 && firstRecordings[0].durationMs === firstRecordings[0].bytes / 32);
+    await expect(page.getByText(/^WAV .*file time/).first()).toBeVisible();
     let evidence = await page.locator('.dt-segment').count(); assert(evidence > 0);
     await page.getByRole('button', { name: 'Start transcription', exact: true }).click();
     await expect(page.getByTestId('desktop-recording-status')).toHaveText('Transcribing locally', { timeout: 45000 });
+    console.log('Second native capture started');
     await expect.poll(() => page.locator('.dt-segment').count(), { timeout: 60000 }).toBeGreaterThan(evidence);
     await page.getByRole('button', { name: 'Finish & review', exact: true }).click();
     await expect(page.getByRole('region', { name: 'Review original text' })).toBeVisible({ timeout: 30000 });
     evidence = await page.locator('.dt-segment').count();
     report.segmentCount = evidence; report.nativeInference = 'Passed with public file-backed test audio; no physical microphone';
     report.stages.push('real model import/hash verification, AudioWorklet capture, native CPU inference, rendered transcript, pause/resume and final stop');
+    const recordings = await page.evaluate(() => window.meetfolioDesktop.listRecordings());
+    assert.equal(recordings.length, 2); assert(recordings.every(item => item.status === 'complete' && item.bytes > 0));
+    const exported = path.join(out, 'public-fixture-recording.wav');
+    await instance.evaluate(({ dialog }, target) => { dialog.showSaveDialog = async () => ({ canceled: false, filePath: target }); }, exported);
+    assert.equal(await page.evaluate(id => window.meetfolioDesktop.exportRecording(id), recordings[0].id), true);
+    const wav = await fs.readFile(exported);
+    assert.equal(wav.toString('ascii', 0, 4), 'RIFF'); assert.equal(wav.toString('ascii', 8, 12), 'WAVE');
+    assert.equal(wav.length, recordings[0].bytes + 44); assert.equal(wav.readUInt32LE(40), recordings[0].bytes);
+    assert.equal(wav.readUInt32LE(24), 16000); assert.equal(wav.readUInt16LE(22), 1);
+    report.stages.push('two independent sample-counted WAV captures, transcript audio identities, and native file-dialog WAV export');
     await instance.close(); instance = null;
     page = await launch();
     const restored = await page.evaluate(() => window.meetfolioDesktop.getModelStatus());
     assert(restored.engineLoaded && restored.offline);
     await expect(page.locator('.dt-segment')).toHaveCount(evidence);
+    assert.deepEqual(await page.evaluate(() => window.meetfolioDesktop.listRecordings()), recordings);
     report.stages.push('normal shutdown and restart preserved model cache and confirmed fixture transcript');
+    // Start another fictional capture then terminate the host without its save/stop handshake.
+    await page.getByRole('button', { name: 'Live session', exact: false }).click();
+    await page.getByRole('button', { name: 'Start transcription', exact: true }).click();
+    await expect(page.getByTestId('desktop-recording-status')).toHaveText('Transcribing locally', { timeout: 45000 });
+    await expect.poll(async () => (await page.evaluate(() => window.meetfolioDesktop.listRecordings())).find(item => item.status === 'recording')?.bytes ?? 0).toBeGreaterThan(32000);
+    const child = instance.process();
+    // Wait for inherited Chromium handles as well as the host. On Windows terminate only
+    // this isolated test process tree; surviving GPU processes can retain profile locks.
+    const exited = new Promise((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error('Verification process tree did not close')), 15000);
+      child.once('close', () => { clearTimeout(timer); resolve(); });
+    });
+    if (process.platform === 'win32') execFileSync('taskkill', ['/PID', String(child.pid), '/T', '/F'], { windowsHide: true, stdio: 'ignore' });
+    else child.kill('SIGKILL');
+    await exited; instance = null;
+    page = await launch();
+    const interrupted = (await page.evaluate(() => window.meetfolioDesktop.listRecordings())).find(item => item.recoverable);
+    assert(interrupted && interrupted.status === 'interrupted' && interrupted.bytes > 0);
+    const recovered = await page.evaluate(id => window.meetfolioDesktop.recoverRecording(id), interrupted.id);
+    assert.equal(recovered.bytes, interrupted.bytes); assert.equal(recovered.status, 'interrupted'); assert.equal(recovered.recoverable, false);
+    assert.deepEqual(await page.evaluate(id => window.meetfolioDesktop.recoverRecording(id), interrupted.id), recovered);
+    report.stages.push('forced host termination, restart discovery and explicit non-overwriting recovery of saved partial WAV; missing tail not claimed recovered');
   }
   assert.equal(await instance.evaluate(() => globalThis.__phase3aNetworkAttempts), 0, 'Unexpected network attempt in offline workflow');
   await instance.close(); instance = null;

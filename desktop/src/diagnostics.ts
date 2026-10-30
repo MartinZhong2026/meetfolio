@@ -2,7 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 
 export const DIAGNOSTIC_CODES = ['startup', 'model_load', 'native_init', 'microphone_permission', 'audio_capture',
-  'inference_timeout', 'queue_overload', 'ipc_error', 'child_exit', 'cleanup_failure', 'recovery', 'shutdown'] as const;
+  'inference_timeout', 'queue_overload', 'ipc_error', 'child_exit', 'cleanup_failure', 'recovery', 'shutdown', 'recording_write'] as const;
 export type DiagnosticCode = typeof DIAGNOSTIC_CODES[number];
 
 /** Fixed event codes only: no free text, paths, audio, transcript, renderer arguments or exception strings. */

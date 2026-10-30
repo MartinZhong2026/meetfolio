@@ -28,8 +28,21 @@ describe('preload ownership contract (mock Electron unit test)', () => {
     const session = await runtime.startTranscription(callbacks());
     mocks.captureStop.mockRejectedValueOnce(new Error('fixture cleanup failure'));
     await expect(session.stop()).rejects.toThrow('fixture cleanup');
-    expect(mocks.invoke).toHaveBeenCalledWith(CHANNEL.stop, '01234567-89ab-cdef-0123-456789abcdef');
+    expect(mocks.invoke).toHaveBeenCalledWith(CHANNEL.stop, { id: '01234567-89ab-cdef-0123-456789abcdef', interrupted: true });
     expect(mocks.send).toHaveBeenCalledWith(CHANNEL.diagnostic, 'cleanup_failure');
     const retry = await runtime.startTranscription(callbacks()); await retry.stop();
+  });
+  it('marks a disconnected device as interrupted after flushing the remaining capture audio', async () => {
+    const cb = callbacks();
+    await runtime.startTranscription(cb);
+    mocks.captureStart.mock.calls[0][1]();
+    await vi.waitFor(() => expect(cb.onInterruption).toHaveBeenCalledOnce());
+    expect(mocks.captureStop).toHaveBeenCalledOnce();
+    expect(mocks.invoke).toHaveBeenCalledWith(CHANNEL.stop, { id: '01234567-89ab-cdef-0123-456789abcdef', interrupted: true });
+  });
+  it('marks failed microphone setup as interrupted rather than a complete empty capture', async () => {
+    mocks.captureStart.mockRejectedValueOnce(new Error('fixture unavailable device'));
+    await expect(runtime.startTranscription(callbacks())).rejects.toThrow('fixture unavailable');
+    expect(mocks.invoke).toHaveBeenCalledWith(CHANNEL.stop, { id: '01234567-89ab-cdef-0123-456789abcdef', interrupted: true });
   });
 });

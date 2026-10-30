@@ -23,6 +23,9 @@ const diagnostic = (code: 'microphone_permission' | 'audio_capture' | 'ipc_error
 const runtime: DesktopRuntime = {
   version: 1,
   saveExport: (name, bytes) => invoke(CHANNEL.save, { name, bytes }),
+  listRecordings: () => invoke(CHANNEL.recordings),
+  recoverRecording: id => invoke(CHANNEL.recoverRecording, id),
+  exportRecording: id => invoke(CHANNEL.exportRecording, id),
   onBeforeClose: handler => { flushNotebook = handler; return () => { if (flushNotebook === handler) flushNotebook = null; }; },
   getModelStatus: () => invoke(CHANNEL.status),
   subscribeModelStatus: callback => {
@@ -51,13 +54,14 @@ const runtime: DesktopRuntime = {
       return 'granted';
     } catch (error) { diagnostic('microphone_permission'); return (error as DOMException).name === 'NotAllowedError' ? 'denied' : 'unavailable'; }
   },
-  startTranscription: async callbacks => {
+  startTranscription: async (callbacks, options) => {
     if (active || starting) throw new Error('Microphone session is already starting or active');
     starting = true;
     let id: string;
-    try { id = await invoke(CHANNEL.start); } catch (error) { starting = false; diagnostic('ipc_error'); throw error; }
+    try { id = await invoke(CHANNEL.start, options); } catch (error) { starting = false; diagnostic('ipc_error'); throw error; }
     const capture = new MicCapture();
     let stopped: Promise<void> | null = null;
+    let captureInterrupted = false;
     const listener = (event: any) => {
       if (event?.id !== id) return;
       if (event.type === 'final') callbacks.onSegment(event.segment);
@@ -71,13 +75,14 @@ const runtime: DesktopRuntime = {
       }
     };
     listeners.add(listener);
-    const stop = () => {
+    const stop = (interrupted = false) => {
+      captureInterrupted ||= interrupted;
       if (stopped) return stopped;
       stopped = (async () => {
         // Flush the capture worklet first, then native inference. Keep final callbacks until both finish.
         let captureError: unknown;
         try { await capture.stop(); } catch (error) { captureError = error; diagnostic('cleanup_failure'); }
-        try { await invoke(CHANNEL.stop, id); if (captureError) throw captureError; }
+        try { await invoke(CHANNEL.stop, captureInterrupted || captureError ? { id, interrupted: true } : id); if (captureError) throw captureError; }
         finally { listeners.delete(listener); if (active?.id === id) active = null; }
       })();
       return stopped;
@@ -86,9 +91,9 @@ const runtime: DesktopRuntime = {
     try {
       await capture.start(pcm => ipcRenderer.send(CHANNEL.audio, { id, pcm: new Uint8Array(pcm.buffer, pcm.byteOffset, pcm.byteLength) }), () => {
         diagnostic('audio_capture');
-        void stop().finally(() => callbacks.onInterruption('Audio capture stopped or the microphone disconnected. Confirmed text is preserved; review the end before resuming.')).catch(() => {});
+        void stop(true).finally(() => callbacks.onInterruption('Audio capture stopped or the microphone disconnected. Confirmed text is preserved; review the end before resuming.')).catch(() => {});
       });
-    } catch (error) { diagnostic('audio_capture'); await stop().catch(() => {}); throw error; }
+    } catch (error) { diagnostic('audio_capture'); await stop(true).catch(() => {}); throw error; }
     finally { starting = false; }
     return { stop };
   },

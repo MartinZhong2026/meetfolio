@@ -1,6 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { isAppUrl, validAudio, validSession, validExport } from '../src/policy';
+import { isAppUrl, validAudio, validSession, validExport, validStart, validStop } from '../src/policy';
 describe('trusted desktop boundary', () => {
+  it('requires an interview identity for audio ownership, never a renderer path', () => {
+    expect(validStart({ interviewId: 'interview_1-test' })).toBe(true);
+    for (const value of [undefined, null, {}, { interviewId: '' }, { interviewId: '../user' }, { interviewId: 'x'.repeat(101) }]) expect(validStart(value)).toBe(false);
+  });
+  it('accepts only a native UUID and explicit interruption marker on stop', () => {
+    const id = '01234567-89ab-cdef-0123-456789abcdef';
+    expect(validStop(id)).toBe(true);
+    expect(validStop({ id, interrupted: true })).toBe(true);
+    for (const value of [null, {}, { id: '../audio', interrupted: true }, { id, interrupted: 'yes' }, { id, interrupted: false }]) expect(validStop(value)).toBe(false);
+  });
   it('limits exports to named research documents and never accepts renderer paths', () => {
     expect(validExport({ name: 'Meetfolio-test.docx', bytes: new Uint8Array(100) })).toBe(true);
     for (const name of ['../file.txt', 'C:\\secret.txt', 'file.exe', 'file.txt.exe', '/tmp/data.json']) expect(validExport({ name, bytes: new Uint8Array(100) })).toBe(false);
