@@ -2,7 +2,7 @@ name: Recovery verification
 on:
   pull_request:
   push:
-    branches: [main, recovery/complete-source]
+    branches: [main]
 
 concurrency:
   group: verify-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
