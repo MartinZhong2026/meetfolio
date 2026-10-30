@@ -2,7 +2,7 @@ name: Recovery verification
 on:
   pull_request:
   push:
-    branches: [main, recovery/complete-source]
+    branches: [main]
 
 concurrency:
   group: verify-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -129,6 +129,8 @@ jobs:
       - run: node server/scripts/check-xasr-runtime.mjs
       - run: npm run test -w server -- --config vitest.native.config.ts
       - run: npm run test -w desktop
+      - name: Actual Electron segment playback with generated tones
+        run: node desktop/scripts/playback-smoke.mjs --out work/phase3b2/ci-source
       - name: Verify official model and prepare public speech fixture
         run: node desktop/scripts/prepare-native-fixture.mjs
       - name: Actual Electron, native inference and file-backed microphone (no physical device)
@@ -144,6 +146,8 @@ jobs:
         run: |
           $fixture = Get-Content -Raw work/phase3a/ci-fixture/fixture.json | ConvertFrom-Json
           node desktop/scripts/native-smoke.mjs --executable work/desktop-packages/win-unpacked/Meetfolio.exe --archive $fixture.archive --audio $fixture.audio --out work/phase3a/ci-packaged-smoke
+      - name: Verify packaged segment playback without installing
+        run: node desktop/scripts/playback-smoke.mjs --executable work/desktop-packages/win-unpacked/Meetfolio.exe --out work/phase3b2/ci-packaged
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -152,3 +156,5 @@ jobs:
             work/phase3a/ci-smoke/native-smoke.json
             work/phase3a/ci-packaged-smoke/native-smoke.json
             work/desktop-packages/static-review.json
+            work/phase3b2/ci-source/playback-smoke.json
+            work/phase3b2/ci-packaged/playback-smoke.json

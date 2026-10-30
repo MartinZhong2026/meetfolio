@@ -6,6 +6,7 @@ export const CHANNEL = {
   save: 'meetfolio:save-export', event: 'meetfolio:runtime-event', closeReady: 'meetfolio:close-ready',
   diagnostic: 'meetfolio:diagnostic',
   recordings: 'meetfolio:recordings', recoverRecording: 'meetfolio:recording-recover', exportRecording: 'meetfolio:recording-export',
+  preparePlayback: 'meetfolio:playback-prepare', releasePlayback: 'meetfolio:playback-release',
 } as const;
 export function isAppUrl(value: string): boolean {
   try { const url = new URL(value); return url.protocol === 'meetfolio:' && url.hostname === 'app' && !url.username && !url.password && !url.port; }
@@ -16,6 +17,14 @@ export function validSession(value: unknown): value is string {
 }
 export function validInterview(value: unknown): value is string {
   return typeof value === 'string' && /^[a-zA-Z0-9_-]{1,100}$/.test(value);
+}
+export interface PlaybackRequest { interviewId: string; recordingId: string; startMs: number; endMs: number }
+export function validPlayback(value: unknown): value is PlaybackRequest {
+  if (!value || typeof value !== 'object') return false;
+  const v = value as PlaybackRequest;
+  return validInterview(v.interviewId) && validSession(v.recordingId) &&
+    Number.isFinite(v.startMs) && Number.isFinite(v.endMs) && v.startMs >= 0 &&
+    v.endMs > v.startMs && v.endMs <= 0xffffffff / 32;
 }
 export function validStart(value: unknown): value is { interviewId: string } {
   return !!value && typeof value === 'object' && validInterview((value as { interviewId?: unknown }).interviewId);

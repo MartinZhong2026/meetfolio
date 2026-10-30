@@ -18,6 +18,8 @@ For the standalone desktop UI run `npm run build:desktop`, `npx playwright insta
 
 ## Automation and review
 
+Phase 3B2 playback uses `node desktop/scripts/playback-smoke.mjs` after `npm run build:electron`, with an optional `--executable` for the unpacked build. It runs actual preload/protocol/media playback against generated tones in a disposable profile and uploads no audio. See [playback contract](PHASE3B2_PLAYBACK.md). PR CI keeps all five jobs and unrestricted PR bases; branch push CI is limited to main in this branch. Earlier stacked ancestors retain their existing workflow versions until separately updated.
+
 The PR workflow runs Node 22 dependency installation, `verify`, isolated PostgreSQL tests twice, desktop and historical web browser tests, artifact checks and a full dependency audit including development tools. Each job has a timeout; concurrency cancels obsolete runs. `npm audit --audit-level=high` is a real gate and must not be silenced to produce green CI. Moderate React Router and Drizzle Kit advisories remain. Verify each changed head in CI. A successful Linux run is not Windows or macOS native acceptance.
 
 Phase 3A adds a Windows native job that loads the pinned Sherpa module, imports a checksum-verified public model, runs actual Electron against a file-backed test microphone, and builds/static-checks an unsigned installer without installing it. These checks use private disposable profiles and publish only status reports, never notebooks, audio, model archives or raw inference logs. Physical device acceptance remains in the [Windows checklist](PHASE3A_WINDOWS_ACCEPTANCE.md).

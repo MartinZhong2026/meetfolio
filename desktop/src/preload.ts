@@ -26,6 +26,8 @@ const runtime: DesktopRuntime = {
   listRecordings: () => invoke(CHANNEL.recordings),
   recoverRecording: id => invoke(CHANNEL.recoverRecording, id),
   exportRecording: id => invoke(CHANNEL.exportRecording, id),
+  preparePlayback: value => invoke(CHANNEL.preparePlayback, value),
+  releasePlayback: token => invoke(CHANNEL.releasePlayback, token),
   onBeforeClose: handler => { flushNotebook = handler; return () => { if (flushNotebook === handler) flushNotebook = null; }; },
   getModelStatus: () => invoke(CHANNEL.status),
   subscribeModelStatus: callback => {

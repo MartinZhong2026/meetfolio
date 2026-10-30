@@ -6,10 +6,12 @@ export function TranscriptSegment({
   segment: s,
   prefix = '',
   onChange,
+  onPlay,
 }: {
   segment: Segment;
   prefix?: string;
   onChange: (s: Segment) => void;
+  onPlay?: (s: Segment) => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
@@ -63,7 +65,7 @@ export function TranscriptSegment({
             </button>
           </>
         ) : (
-          <p>{effectiveText(s)}</p>
+          s.audio && onPlay ? <button className="dt-transcript-play" aria-label={`Play audio for segment ${s.seq}`} aria-describedby={`${prefix}audio-text-${s.id}`} onClick={() => onPlay(s)}><span id={`${prefix}audio-text-${s.id}`}>{effectiveText(s)}</span></button> : <p>{effectiveText(s)}</p>
         )}
         {s.editedText !== null && (
           <details>
