@@ -1,6 +1,7 @@
 import fs, { type FileHandle } from 'node:fs/promises';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
+import { constants } from 'node:fs';
 
 export interface RecordingInfo {
   id: string;
@@ -27,7 +28,7 @@ function directory(root: string, id: string): string {
 export function recordingPath(root: string, id: string): string {
   return path.join(directory(root, id), 'recording.wav');
 }
-function header(bytes: number): Buffer {
+export function header(bytes: number): Buffer {
   const b = Buffer.alloc(44);
   b.write('RIFF', 0); b.writeUInt32LE(36 + bytes, 4); b.write('WAVEfmt ', 8);
   b.writeUInt32LE(16, 16); b.writeUInt16LE(1, 20); b.writeUInt16LE(1, 22);
@@ -77,24 +78,45 @@ async function metadata(root: string, id: string): Promise<RecordingInfo> {
 async function inspect(file: string, complete: boolean): Promise<number> {
   await regular(file);
   const handle = await fs.open(file, 'r');
+  try { return await inspectHandle(handle, complete); }
+  finally { await handle.close(); }
+}
+async function inspectHandle(handle: FileHandle, complete: boolean): Promise<number> {
+  const size = (await handle.stat()).size;
+  if (size < 44 || size - 44 > MAX_PCM) throw new Error('Invalid recording size');
+  const actual = await readAll(handle, 44, 0);
+  const expected = header(0);
+  for (let i = 0; i < 44; i++) {
+    if ((i >= 4 && i < 8) || i >= 40) continue;
+    if (actual[i] !== expected[i]) throw new Error('Unsupported recording format');
+  }
+  const bytes = size - 44;
+  const declared = actual.readUInt32LE(40);
+  // A failed final header write may leave one size updated; only these own-format values are accepted.
+  if (![0, bytes - bytes % 2].includes(declared) || ![36, 36 + bytes - bytes % 2].includes(actual.readUInt32LE(4))) {
+    throw new Error('Invalid recording header');
+  }
+  if (complete && (bytes % 2 || declared !== bytes || actual.readUInt32LE(4) !== bytes + 36)) throw new Error('Incomplete WAV');
+  return bytes - bytes % 2;
+}
+
+/** Read-only ownership check against native metadata; never accepts a renderer file path. */
+export async function openPlaybackRecording(root: string, id: string, interviewId: string): Promise<{ file: FileHandle; bytes: number }> {
+  if (!INTERVIEW.test(interviewId)) throw new Error('Invalid interview ID');
+  const info = await metadata(root, id);
+  if (info.interviewId !== interviewId) throw new Error('Recording belongs to another interview');
+  if (active.has(directory(root, id))) throw new Error('Stop capture before playback');
+  const name = recordingPath(root, id);
+  const before = await fs.lstat(name);
+  if (!before.isFile() || before.isSymbolicLink()) throw new Error('Invalid recording file');
+  const file = await fs.open(name, constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0));
   try {
-    const size = (await handle.stat()).size;
-    if (size < 44 || size - 44 > MAX_PCM) throw new Error('Invalid recording size');
-    const actual = await readAll(handle, 44, 0);
-    const expected = header(0);
-    for (let i = 0; i < 44; i++) {
-      if ((i >= 4 && i < 8) || i >= 40) continue;
-      if (actual[i] !== expected[i]) throw new Error('Unsupported recording format');
-    }
-    const bytes = size - 44;
-    const declared = actual.readUInt32LE(40);
-    // A failed final header write may leave one size updated; only these own-format values are accepted.
-    if (![0, bytes - bytes % 2].includes(declared) || ![36, 36 + bytes - bytes % 2].includes(actual.readUInt32LE(4))) {
-      throw new Error('Invalid recording header');
-    }
-    if (complete && (bytes % 2 || declared !== bytes || actual.readUInt32LE(4) !== bytes + 36)) throw new Error('Incomplete WAV');
-    return bytes - bytes % 2;
-  } finally { await handle.close(); }
+    const opened = await file.stat();
+    if (!opened.isFile() || before.ino !== opened.ino || before.dev !== opened.dev) throw new Error('Recording changed');
+    const bytes = await inspectHandle(file, true);
+    await finalStatus(directory(root, id), bytes);
+    return { file, bytes };
+  } catch (error) { await file.close(); throw error; }
 }
 
 /** One immutable capture session. Pause/resume uses a new session; no existing WAV is appended. */

@@ -29,6 +29,8 @@ export interface DesktopRuntime {
   listRecordings?(): Promise<RecordingInfo[]>;
   recoverRecording?(id: string): Promise<RecordingInfo>;
   exportRecording?(id: string): Promise<boolean>;
+  preparePlayback?(value: { interviewId: string; recordingId: string; startMs: number; endMs: number }): Promise<{ token: string; url: string; durationMs: number }>;
+  releasePlayback?(token: string): Promise<void>;
   getModelStatus(): Promise<ModelStatus>;
   subscribeModelStatus?(listener: (status: ModelStatus) => void): () => void;
   downloadModel?(onProgress: (status: ModelStatus) => void): Promise<void>;

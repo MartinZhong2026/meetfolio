@@ -8,7 +8,7 @@ The native desktop now saves the same 16 kHz mono PCM16 frames supplied to offli
 
 Local storage & backup info lists captures for the selected interview, exports finalized WAVs using a native save dialog and explicitly recovers unfinished files after restart. “Show all local recordings” also exposes orphaned captures after a notebook restore or loss. An unreadable session remains visible and does not hide other recordings. There is no automatic deletion, retention sweep, migration of old audio or rewrite of existing recordings.
 
-Per-segment playback, combined audio/notebook backup and restore, recording deletion and automatic re-transcription of recovered audio are **not implemented** in this phase. Earlier transcript/demo/manual entries have no retrospectively recoverable audio. PDF/DOCX local reference extraction, physical microphone acceptance, installation and macOS acceptance are still pending.
+Per-segment playback is added in the incremental [Phase 3B2](PHASE3B2_PLAYBACK.md). Combined audio/notebook backup and restore, recording deletion and automatic re-transcription of recovered audio are **not implemented**. Earlier transcript/demo/manual entries have no retrospectively recoverable audio. PDF/DOCX local reference extraction, physical microphone acceptance, installation and macOS acceptance are still pending.
 
 ## Storage and failure contract
 
@@ -60,4 +60,4 @@ Follow the existing [Phase 3A Windows checklist](PHASE3A_WINDOWS_ACCEPTANCE.md),
 4. Disconnect a removable microphone. Confirm an interruption, preserved audio/text and deliberate retry. Test insufficient disk space only on an explicitly isolated disposable volume, never by filling the everyday system drive.
 5. Keep JSON plus each exported WAV separately. Check JSON restored copies do not claim to import audio. Installation/uninstallation, updates/data retention, actual offline networking and macOS still need their own acceptance.
 
-Next engineering stage: bounded native audio reads/playback with exact file-relative seek, then a versioned combined backup/restore format with association checks and rollback.
+Phase 3B2 adds bounded native playback with exact file-relative sample slicing. Next: a versioned combined backup/restore format with association checks and rollback.

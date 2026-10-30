@@ -61,8 +61,9 @@ export function useLiveSession(meetingId: string) {
         });
     const ringEnd = (await buffer?.latestEnd().catch(() => null)) ?? 0;
     const startPos = Math.max(meeting.recordedMs, ringEnd);
-    // A meeting left "interrupted" lost its previous page/connection without a clean pause.
-    const resumeReason = meeting.transcriptStatus === 'interrupted' && meeting.recordedMs > 0 ? ('page_reload' as const) : undefined;
+    // Reload may read the meeting before the old socket finishes persisting "interrupted".
+    // With no live local session, persisted in_progress also needs an honest interruption junction.
+    const resumeReason = ['interrupted', 'in_progress'].includes(meeting.transcriptStatus) && meeting.recordedMs > 0 ? ('page_reload' as const) : undefined;
     useWorkspace.getState().patchRec({ error: null, positionMs: startPos });
     const tr = new Transcriber({
       meetingId,

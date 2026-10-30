@@ -2,7 +2,10 @@ import { fmtClock, effectiveText } from '../lib/format';
 import { noteCategoryLabel } from './englishNotes';
 import { TranscriptSegment } from './Transcript';
 import { jump, type ReviewProps } from './editor';
+import { useRef } from 'react';
+import { SegmentPlayback, type SegmentPlaybackHandle } from './SegmentPlayback';
 export function ReviewExport({ i, save, segmentChange, doExport, exporting }: ReviewProps) {
+  const playback = useRef<SegmentPlaybackHandle>(null);
   const excerpts = (i.segments.some(s => s.isImportant) ? i.segments.filter(s => s.isImportant) : i.segments).slice(0, 3);
   const finding = i.notes.find(n => n.category === 'finding');
   return (
@@ -11,8 +14,9 @@ export function ReviewExport({ i, save, segmentChange, doExport, exporting }: Re
         <div className="dt-eyebrow">HUMAN REVIEW FIRST</div>
         <h2>Verify sources before drawing conclusions</h2>
         <p className="dt-muted">Original transcript, revisions, timestamps and evidence remain visible for verification.</p>
+        <SegmentPlayback ref={playback} interviewId={i.id}/>
         <div className="dt-review-scroll">
-          {i.segments.map(s => <TranscriptSegment key={s.id} segment={s} prefix="review-" onChange={segmentChange}/>)}
+          {i.segments.map(s => <TranscriptSegment key={s.id} segment={s} prefix="review-" onChange={segmentChange} onPlay={segment => playback.current?.play(segment)}/>)}
           {i.notes.map(n => <article className="dt-evidence-note" id={`review-note-${n.id}`} key={n.id} tabIndex={-1}>
             <strong>Researcher note · {fmtClock(n.timestampMs ?? 0)} · {noteCategoryLabel(n.category)}</strong>
             <p>{n.content}</p>

@@ -10,8 +10,9 @@ import { RecordedSession } from './recorded-session.js';
 import { listRecordings, recoverRecording, recordingPath } from './wav-recording.js';
 import { CHANNEL, isAppUrl, validAudio, validSession, validExport, validStart, validStop } from './policy.js';
 import { Diagnostics, asrDiagnostic } from './diagnostics.js';
+import { RecordingPlayback } from './playback.js';
 
-protocol.registerSchemesAsPrivileged([{ scheme: 'meetfolio', privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true } }]);
+protocol.registerSchemesAsPrivileged([{ scheme: 'meetfolio', privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true, stream: true } }]);
 app.setName('Meetfolio');
 if (process.platform === 'win32') app.setAppUserModelId('org.meetfolio.desktop');
 const verification = app.commandLine.hasSwitch('verification');
@@ -25,6 +26,7 @@ let model: XAsrModelManager;
 let recording: RecordedSession | null = null;
 let lifecycle = 0;
 const recordingsRoot = path.join(app.getPath('userData'), 'recordings');
+const playback = new RecordingPlayback(recordingsRoot);
 let starting = false;
 let initializing: Promise<void> | null = null;
 let microphoneUntil = 0;
@@ -44,7 +46,7 @@ function mappedStatus(status: Readonly<XAsrStatus>) {
     modelId: model.model, offline: true, engineLoaded: status.state === 'ready',
     downloadedBytes: status.downloadedBytes, totalBytes: status.totalBytes, detail: status.detail };
 }
-const argumentChannels: readonly string[] = [CHANNEL.import, CHANNEL.save, CHANNEL.stop, CHANNEL.start, CHANNEL.recoverRecording, CHANNEL.exportRecording];
+const argumentChannels: readonly string[] = [CHANNEL.import, CHANNEL.save, CHANNEL.stop, CHANNEL.start, CHANNEL.recoverRecording, CHANNEL.exportRecording, CHANNEL.preparePlayback, CHANNEL.releasePlayback];
 const recordingChannels: readonly string[] = [CHANNEL.start, CHANNEL.stop, CHANNEL.recordings, CHANNEL.recoverRecording, CHANNEL.exportRecording];
 async function ensureLoaded(): Promise<void> {
   if (initializing) { await initializing; return; }
@@ -60,6 +62,7 @@ function handle(channel: string, fn: (arg: unknown) => unknown) {
     } catch (error) { diagnostics.record('ipc_error'); throw error; }
     try { return await fn(arg); }
     catch (error) {
+      if (channel === CHANNEL.preparePlayback || channel === CHANNEL.releasePlayback) throw new Error('Audio unavailable. Stop capture, recover interrupted recordings, and check the saved WAV and its timestamps. Restored interview copies do not automatically inherit audio access.');
       if (channel === CHANNEL.start) diagnostics.record('native_init');
       else if (channel === CHANNEL.stop) diagnostics.record('cleanup_failure');
       else if (channel === CHANNEL.permission) diagnostics.record('microphone_permission');
@@ -78,7 +81,9 @@ async function boot(): Promise<void> {
   model.on('status', status => { if (status.state === 'error') diagnostics.record('model_load'); emit({ type: 'model', status: mappedStatus(status) }); });
   protocol.handle('meetfolio', async request => {
     const url = new URL(request.url);
-    if (!isAppUrl(request.url) || request.method !== 'GET') return new Response('Forbidden', { status: 403 });
+    if (!isAppUrl(request.url)) return new Response('Forbidden', { status: 403 });
+    if (url.pathname.startsWith('/recording-playback/')) return playback.respond(request);
+    if (request.method !== 'GET') return new Response('Forbidden', { status: 403 });
     let relative: string;
     try { relative = decodeURIComponent(url.pathname).replace(/^\/+/, '') || 'index.html'; } catch { return new Response('Bad path', { status: 400 }); }
     if (relative.includes('\\') || relative.includes('\0') || relative.split('/').some(part => part === '..')) return new Response('Forbidden', { status: 403 });
@@ -113,7 +118,7 @@ async function boot(): Promise<void> {
   });
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   window.webContents.on('will-navigate', (event, url) => { if (!isAppUrl(url)) event.preventDefault(); });
-  const interrupt = () => { lifecycle++; recording?.abort('The window reloaded or closed unexpectedly. Review saved text and local recordings for gaps.'); };
+  const interrupt = () => { lifecycle++; void playback.release().catch(() => diagnostics.record('cleanup_failure')); recording?.abort('The window reloaded or closed unexpectedly. Review saved text and local recordings for gaps.'); };
   window.webContents.on('render-process-gone', () => { diagnostics.record('child_exit'); interrupt(); });
   window.webContents.on('did-start-navigation', (_event, _url, _inPlace, mainFrame) => { if (mainFrame) interrupt(); });
   handle(CHANNEL.status, async () => { try { await ensureLoaded(); } catch {} return mappedStatus(model.getStatus()); });
@@ -145,6 +150,14 @@ async function boot(): Promise<void> {
     return 'granted';
   });
   handle(CHANNEL.recordings, () => listRecordings(recordingsRoot));
+  handle(CHANNEL.preparePlayback, value => {
+    if (recording || starting || quitting) throw new Error('Stop capture before playback');
+    return playback.prepare(value);
+  });
+  handle(CHANNEL.releasePlayback, token => {
+    if (!validSession(token)) throw new Error('Invalid playback token');
+    return playback.release(token);
+  });
   handle(CHANNEL.recoverRecording, async id => {
     if (!validSession(id) || recording || starting) throw new Error('Stop capture before recovering a recording');
     return recoverRecording(recordingsRoot, id);
@@ -175,6 +188,7 @@ async function boot(): Promise<void> {
     starting = true;
     const generation = lifecycle;
     try {
+    await playback.release();
     await ensureLoaded();
     if (generation !== lifecycle || quitting) throw new Error('Recording start cancelled by window lifecycle');
     if (model.getStatus().state !== 'ready') throw new Error('X-ASR 模型未成功初始化');
@@ -238,6 +252,7 @@ else {
     quitting = true;
     lifecycle++;
     void (async () => {
+      await playback.release().catch(() => diagnostics.record('cleanup_failure'));
       const saved = window && !window.isDestroyed() ? await new Promise<boolean>(resolve => {
         const id = randomUUID();
         // An immediate post-launch close can precede preload/React readiness. Retrying delivery

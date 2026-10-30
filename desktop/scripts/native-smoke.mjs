@@ -118,8 +118,20 @@ try {
       const timer = setTimeout(() => reject(new Error('Verification process tree did not close')), 15000);
       child.once('close', () => { clearTimeout(timer); resolve(); });
     });
-    if (process.platform === 'win32') execFileSync('taskkill', ['/PID', String(child.pid), '/T', '/F'], { windowsHide: true, stdio: 'ignore' });
-    else child.kill('SIGKILL');
+    if (process.platform === 'win32') {
+      // taskkill /T can terminate the ASR/renderer first, allowing Main to finalize an interrupted WAV.
+      // Snapshot this isolated tree, kill Main first, then clean up only its known descendants.
+      const processes = JSON.parse(execFileSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command',
+        'Get-CimInstance Win32_Process | Select-Object ProcessId,ParentProcessId | ConvertTo-Json -Compress'], { windowsHide: true, encoding: 'utf8' }));
+      const owned = new Set([child.pid]);
+      let added = true;
+      while (added) { added = false; for (const proc of processes) if (owned.has(proc.ParentProcessId) && !owned.has(proc.ProcessId)) { owned.add(proc.ProcessId); added = true; } }
+      child.kill('SIGKILL');
+      for (const pid of [...owned].reverse().filter(pid => pid !== child.pid)) {
+        try { process.kill(pid, 'SIGKILL'); }
+        catch (error) { if (error.code !== 'ESRCH') throw error; }
+      }
+    } else child.kill('SIGKILL');
     await exited; instance = null;
     page = await launch();
     const interrupted = (await page.evaluate(() => window.meetfolioDesktop.listRecordings())).find(item => item.recoverable);
