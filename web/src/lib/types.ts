@@ -44,6 +44,8 @@ export interface Segment {
   isImportant: boolean;
   source: 'live' | 'recovery' | 'demo' | 'manual' | string;
   updatedAt: string;
+  /** Optional desktop WAV identity and sample-derived times within that capture file. */
+  audio?: { recordingId: string; startMs: number; endMs: number };
 }
 
 export interface Gap {

@@ -31,6 +31,7 @@ export function TranscriptSegment({
                 : 'Local engine'}
           </span>
         </div>
+        {s.audio && <p className="dt-fine">WAV {s.audio.recordingId.slice(0, 8)} · file time {fmtClock(s.audio.startMs)}–{fmtClock(s.audio.endMs)}</p>}
         {editing ? (
           <>
             <label className="dt-label">

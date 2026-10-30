@@ -69,7 +69,7 @@ export function LiveInterview({
               {i.recording === 'recording' ? 'Pause simulation' : 'Start simulation'}
             </button>
           ) : i.recording === 'recording' ? (
-            <button className="dt-btn" onClick={() => void runtime.stop(i.id)}>
+            <button className="dt-btn" disabled={runtime.settling} onClick={() => void runtime.stop(i.id)}>
               <Pause size={14} />
               Pause transcription
             </button>
@@ -81,6 +81,7 @@ export function LiveInterview({
                 runtime.checking ||
                 !i.consent ||
                 i.recording === 'starting'
+                || runtime.settling
               }
               onClick={() => void runtime.start(i)}
             >
@@ -92,7 +93,7 @@ export function LiveInterview({
           )}
           <button
             className="dt-btn primary"
-            disabled={i.recording === 'starting'}
+            disabled={i.recording === 'starting' || runtime.settling}
             onClick={() => void finish()}
           >
             Finish & review <ArrowRight size={15} />
@@ -116,6 +117,7 @@ export function LiveInterview({
           <span>
             {i.consent ? 'Recording consent confirmed' : 'Consent not confirmed; manual notes still available'}
           </span>
+          {window.meetfolioDesktop?.listRecordings && <span>WAV saved locally · Export audio separately in Local storage & backup info</span>}
           {!runtime.ready && (
             <button className="dt-link" onClick={() => openSettings()}>
               Open Model & Settings

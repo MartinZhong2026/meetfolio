@@ -4,9 +4,11 @@ import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
 import fs from 'node:fs/promises';
+import { constants } from 'node:fs';
 import type { XAsrModelManager, XAsrStatus } from '../../server/src/asr/xasrManager.js';
-import { NativeSession } from './native-session.js';
-import { CHANNEL, isAppUrl, validAudio, validSession, validExport } from './policy.js';
+import { RecordedSession } from './recorded-session.js';
+import { listRecordings, recoverRecording, recordingPath } from './wav-recording.js';
+import { CHANNEL, isAppUrl, validAudio, validSession, validExport, validStart, validStop } from './policy.js';
 import { Diagnostics, asrDiagnostic } from './diagnostics.js';
 
 protocol.registerSchemesAsPrivileged([{ scheme: 'meetfolio', privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true } }]);
@@ -20,7 +22,9 @@ const gotLock = app.requestSingleInstanceLock();
 let window: BrowserWindow | null = null;
 let windowReady = false;
 let model: XAsrModelManager;
-let recording: NativeSession | null = null;
+let recording: RecordedSession | null = null;
+let lifecycle = 0;
+const recordingsRoot = path.join(app.getPath('userData'), 'recordings');
 let starting = false;
 let initializing: Promise<void> | null = null;
 let microphoneUntil = 0;
@@ -40,6 +44,8 @@ function mappedStatus(status: Readonly<XAsrStatus>) {
     modelId: model.model, offline: true, engineLoaded: status.state === 'ready',
     downloadedBytes: status.downloadedBytes, totalBytes: status.totalBytes, detail: status.detail };
 }
+const argumentChannels: readonly string[] = [CHANNEL.import, CHANNEL.save, CHANNEL.stop, CHANNEL.start, CHANNEL.recoverRecording, CHANNEL.exportRecording];
+const recordingChannels: readonly string[] = [CHANNEL.start, CHANNEL.stop, CHANNEL.recordings, CHANNEL.recoverRecording, CHANNEL.exportRecording];
 async function ensureLoaded(): Promise<void> {
   if (initializing) { await initializing; return; }
   if (!['installed', 'error'].includes(model.getStatus().state) || recording) return;
@@ -50,14 +56,16 @@ function handle(channel: string, fn: (arg: unknown) => unknown) {
   ipcMain.handle(channel, async (event, arg) => {
     try {
       trusted(event);
-      if (channel !== CHANNEL.import && channel !== CHANNEL.save && channel !== CHANNEL.stop && arg !== undefined) throw new Error('Unexpected IPC argument');
+      if (!argumentChannels.includes(channel) && arg !== undefined) throw new Error('Unexpected IPC argument');
     } catch (error) { diagnostics.record('ipc_error'); throw error; }
     try { return await fn(arg); }
     catch (error) {
       if (channel === CHANNEL.start) diagnostics.record('native_init');
       else if (channel === CHANNEL.stop) diagnostics.record('cleanup_failure');
       else if (channel === CHANNEL.permission) diagnostics.record('microphone_permission');
+      else if (channel === CHANNEL.recordings || channel === CHANNEL.recoverRecording || channel === CHANNEL.exportRecording) diagnostics.record('recording_write');
       else if (channel !== CHANNEL.save) diagnostics.record('model_load');
+      if (recordingChannels.includes(channel)) throw new Error('Local audio operation incomplete. Check storage, model and microphone; existing files are retained.');
       throw error;
     }
   });
@@ -105,7 +113,7 @@ async function boot(): Promise<void> {
   });
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   window.webContents.on('will-navigate', (event, url) => { if (!isAppUrl(url)) event.preventDefault(); });
-  const interrupt = () => { recording?.abort('窗口重新载入，语音记录已中断。请核对已保存的末尾文字。'); recording = null; };
+  const interrupt = () => { lifecycle++; recording?.abort('The window reloaded or closed unexpectedly. Review saved text and local recordings for gaps.'); };
   window.webContents.on('render-process-gone', () => { diagnostics.record('child_exit'); interrupt(); });
   window.webContents.on('did-start-navigation', (_event, _url, _inPlace, mainFrame) => { if (mainFrame) interrupt(); });
   handle(CHANNEL.status, async () => { try { await ensureLoaded(); } catch {} return mappedStatus(model.getStatus()); });
@@ -136,22 +144,54 @@ async function boot(): Promise<void> {
     // The preload never returns Granted until it has successfully opened and released a real MediaStream.
     return 'granted';
   });
-  handle(CHANNEL.start, async () => {
+  handle(CHANNEL.recordings, () => listRecordings(recordingsRoot));
+  handle(CHANNEL.recoverRecording, async id => {
+    if (!validSession(id) || recording || starting) throw new Error('Stop capture before recovering a recording');
+    return recoverRecording(recordingsRoot, id);
+  });
+  handle(CHANNEL.exportRecording, async id => {
+    if (!validSession(id)) throw new Error('Invalid recording ID');
+    const info = (await listRecordings(recordingsRoot)).find(item => item.id === id);
+    if (!info || info.status === 'recording' || info.recoverable || info.unavailable) throw new Error('Stop capture or recover the recording first');
+    const source = recordingPath(recordingsRoot, id);
+    // A completed file is copied on disk, never loaded wholesale into renderer memory.
+    const result = await dialog.showSaveDialog(window!, { title: 'Export local WAV recording', defaultPath: `Meetfolio-${id}.wav`,
+      filters: [{ name: 'WAV audio', extensions: ['wav'] }], properties: ['showOverwriteConfirmation'] });
+    if (result.canceled || !result.filePath) return false;
+    if (path.resolve(result.filePath).toLowerCase().startsWith(path.resolve(recordingsRoot).toLowerCase() + path.sep)) throw new Error('Choose an export location outside internal recording storage');
+    const temporary = path.join(path.dirname(result.filePath), `.meetfolio-recording-${randomUUID()}.tmp`);
+    try {
+      await fs.copyFile(source, temporary, constants.COPYFILE_EXCL);
+      const file = await fs.open(temporary, 'r+');
+      try { await file.sync(); } finally { await file.close(); }
+      await fs.rename(temporary, result.filePath);
+    } finally { await fs.rm(temporary, { force: true }); }
+    return true;
+  });
+  handle(CHANNEL.start, async options => {
+    if (!validStart(options)) throw new Error('A valid interview identity is required to record audio');
     if (recording || starting) throw new Error('A microphone session is already starting or active');
     if (Date.now() >= microphoneUntil) throw new Error('Request microphone permission before starting');
     starting = true;
+    const generation = lifecycle;
     try {
     await ensureLoaded();
+    if (generation !== lifecycle || quitting) throw new Error('Recording start cancelled by window lifecycle');
     if (model.getStatus().state !== 'ready') throw new Error('X-ASR 模型未成功初始化');
-    const live = new NativeSession(model, {
+    const live = new RecordedSession(model, {
       final: segment => emit({ type: 'final', id: live.id, segment }),
       partial: result => emit({ type: 'partial', id: live.id, result }),
-      interrupted: reason => { emit({ type: 'interruption', id: live.id, reason }); if (recording === live) recording = null; },
+      interrupted: reason => emit({ type: 'interruption', id: live.id, reason }),
       recovering: () => emit({ type: 'recovering', id: live.id }),
-      diagnostic: code => diagnostics.record(asrDiagnostic(code)),
+      diagnostic: code => diagnostics.record(code === 'recording_write' ? code : asrDiagnostic(code)),
+      released: () => { if (recording === live) recording = null; },
     });
     recording = live;
-    try { await live.start(); return live.id; } catch (error) { live.abort('本地引擎启动失败'); recording = null; throw error; }
+    try {
+      await live.start(recordingsRoot, options.interviewId);
+      if (generation !== lifecycle || quitting) throw new Error('Recording start cancelled by window lifecycle');
+      return live.id;
+    } catch (error) { live.abort('Cannot start local recording. Check model, microphone and available disk space.'); await live.stop().catch(() => {}); throw error; }
     } finally { starting = false; }
   });
   ipcMain.on(CHANNEL.diagnostic, (event, code: unknown) => {
@@ -165,11 +205,12 @@ async function boot(): Promise<void> {
       recording.send(packet.pcm);
     } catch { diagnostics.record('ipc_error'); /* Invalid/unowned packets never reach the engine. */ }
   });
-  handle(CHANNEL.stop, async id => {
-    if (!validSession(id)) throw new Error('无效记录会话');
+  handle(CHANNEL.stop, async value => {
+    if (!validStop(value)) throw new Error('Invalid recording session');
+    const id = typeof value === 'string' ? value : value.id;
     const live = recording;
     if (!live || live.id !== id) return;
-    try { await live.stop(); } finally { if (recording === live) recording = null; }
+    try { await live.stop(typeof value !== 'string'); } finally { if (recording === live) recording = null; }
     // Remain ready for pause/resume only after another successful native initialization.
     if (!quitting) await ensureLoaded();
   });
@@ -195,6 +236,7 @@ else {
     event.preventDefault();
     if (quitting) return;
     quitting = true;
+    lifecycle++;
     void (async () => {
       const saved = window && !window.isDestroyed() ? await new Promise<boolean>(resolve => {
         const id = randomUUID();

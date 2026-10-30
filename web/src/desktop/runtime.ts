@@ -11,11 +11,24 @@ export type ModelStatus = {
 export interface LocalSession {
   stop(): Promise<void>;
 }
+export interface RecordingInfo {
+  id: string;
+  interviewId: string;
+  createdAt: string;
+  durationMs: number;
+  bytes: number;
+  status: 'complete' | 'interrupted' | 'recording';
+  recoverable: boolean;
+  unavailable?: boolean;
+}
 // Optional native preload contract. This UI build ships no native engine or model.
 export interface DesktopRuntime {
   version: 1;
   saveExport?(name: string, bytes: Uint8Array): Promise<boolean>;
   onBeforeClose?(handler: () => Promise<boolean>): () => void;
+  listRecordings?(): Promise<RecordingInfo[]>;
+  recoverRecording?(id: string): Promise<RecordingInfo>;
+  exportRecording?(id: string): Promise<boolean>;
   getModelStatus(): Promise<ModelStatus>;
   subscribeModelStatus?(listener: (status: ModelStatus) => void): () => void;
   downloadModel?(onProgress: (status: ModelStatus) => void): Promise<void>;
@@ -28,7 +41,7 @@ export interface DesktopRuntime {
     onInterruption(reason: string): void;
     onPartial?(result: { key: string; text: string; startMs: number }): void;
     onRecovering?(): void;
-  }): Promise<LocalSession>;
+  }, options?: { interviewId: string }): Promise<LocalSession>;
 }
 declare global {
   interface Window {

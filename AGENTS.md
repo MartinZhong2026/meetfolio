@@ -68,3 +68,18 @@
 7. 是否修改生产环境及建议的下一步。
 
 本规范描述代理行为，不会自动安排定时同步或备份；每次仍需由本地代理实际执行 Commit/Push，GitHub 认证和网络也必须可用。
+
+
+## GitHub automation and account-safety guardrails
+
+For any GitHub remote write, follow `.claude/skills/github-safe-automation/SKILL.md` (or equivalent personal skill). First inspect `git status`, branch, remote identity, current PR and workflow triggers. Work locally and batch verified changes into one planned push per milestone, with at most two automatic CI-fix push cycles before pausing and reporting. Never open duplicate PRs, spam GitHub API, start CI rerun loops or make empty trigger commits. These are workflow defaults, not official GitHub quotas.
+
+On 403/429, abuse or suspension warnings, stop automated writes and retries; do not evade enforcement by swapping accounts or tokens. Never disable required checks, downgrade assertions or auto-merge/release to save Actions usage. Distinguish CI failures from actual account warnings. Report the exact head SHA, CI triggers/runs and any remaining test/device-verification gaps.
+
+### Integration with the existing engineering rules
+
+- Read `.claude/skills/github-safe-automation/SKILL.md`; personal Codex sessions can also discover the same skill at `~/.agents/skills/github-safe-automation/`. It supplements the existing testing, native acceptance, data protection and no-automatic-merge/release requirements.
+- A user request limited to local installation or read-only audit authorizes no commits, pushes, PR writes or CI runs, regardless of earlier ordinary development authorization. The skill itself grants no remote permissions.
+- Push/fix budgets are workflow defaults, not GitHub quotas. At the limit or a platform restriction, retain progress, stop remote retries and report; do not evade through empty commits, new PRs or account changes.
+- Before changing triggers, distinguish PR head/base branches and stacked PRs, predict Push/PR run counts and assess required-check compatibility. If only an audit is authorized, propose changes without modifying the workflow. Reducing duplicates must preserve necessary engineering jobs.
+- Record the PR head SHA; if CI checks out a synthetic merge SHA, confirm its head/base relationship. Check status only at meaningful milestones, avoid frequent polling, and report the task's Push, PR-write and CI-run/rerun counts and event types, including zero counts.

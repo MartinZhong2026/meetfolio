@@ -252,6 +252,100 @@ async function runtime(page: Page, mode: 'installed' | 'download') {
   );
 }
 
+test('recording catalog: orphan discovery, recovery, export cancellation and unreadable files (mock native bridge)', async ({ page }) => {
+  await runtime(page, 'installed');
+  await page.goto('/');
+  await saved(page);
+  await page.evaluate(() => {
+    const id = '01234567-89ab-cdef-0123-456789abcdef';
+    let recovered = false;
+    Object.assign(window.meetfolioDesktop!, {
+      listRecordings: async () => [{ id, interviewId: 'missing-interview', createdAt: '2026-10-30T00:00:00Z', durationMs: 1250, bytes: 40000,
+        status: 'interrupted', recoverable: !recovered },
+      { id: '11234567-89ab-cdef-0123-456789abcdef', interviewId: 'unknown', createdAt: '', durationMs: 0, bytes: 0, status: 'interrupted', recoverable: false, unavailable: true }],
+      recoverRecording: async () => { recovered = true; return { id }; },
+      exportRecording: async () => false,
+    });
+  });
+  await page.getByRole('button', { name: 'Local storage & backup info', exact: true }).click();
+  const catalog = page.getByRole('region', { name: 'Local WAV recordings' });
+  await expect(catalog.getByText(/No saved recordings found/)).toBeVisible();
+  await catalog.getByRole('checkbox', { name: /Show all local recordings/ }).check();
+  await expect(catalog.getByRole('button', { name: 'Export WAV 01234567' })).toBeDisabled();
+  await catalog.getByRole('button', { name: 'Recover saved audio 01234567' }).click();
+  await expect(catalog.getByRole('status')).toContainText('Original partial audio retained');
+  await expect(catalog.getByRole('button', { name: 'Export WAV 01234567' })).toBeEnabled();
+  await catalog.getByRole('button', { name: 'Export WAV 01234567' }).click();
+  await expect(catalog.getByRole('status')).toHaveText('Export cancelled.');
+  await expect(catalog.getByRole('alert')).toContainText('Original files retained');
+  await expect(catalog.getByRole('button', { name: 'Export WAV 11234567' })).toBeDisabled();
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+});
+
+test('delayed capture stop protects controls and preserves the final transcript and audio link (mock native bridge)', async ({ page }) => {
+  await runtime(page, 'installed');
+  await page.goto('/');
+  await saved(page);
+  await page.evaluate(() => {
+    const state = { allowMic: true, capture: { starts: 0, stopCalls: 0, releaseStop: () => {}, emitFinal: () => {} } };
+    Object.assign(window, state);
+    window.meetfolioDesktop!.startTranscription = async callbacks => {
+      const index = ++state.capture.starts;
+      const recordingId = `01234567-89ab-cdef-0123-456789abcde${index}`;
+      state.capture.emitFinal = () => callbacks.onSegment({
+        id: 'final-tail', seq: 1, startMs: 25, endMs: 125,
+        originalText: `Final fictional capture ${index}`, editedText: null, speakerLabel: null,
+        isImportant: false, source: 'local', updatedAt: new Date().toISOString(),
+        audio: { recordingId, startMs: 25, endMs: 125 },
+      });
+      return { stop: () => new Promise<void>(resolve => {
+        state.capture.stopCalls++;
+        state.capture.releaseStop = resolve;
+      }) };
+    };
+  });
+  await page.getByLabel('Interview topic', { exact: true }).fill('Delayed final capture fixture');
+  await page.getByRole('checkbox', { name: 'I have obtained informed recording consent from the participant (required)' }).check();
+  await page.getByRole('button', { name: 'Start live interview' }).last().click();
+  await page.getByRole('button', { name: 'Start transcription', exact: true }).click();
+  await expect(page.getByTestId('desktop-recording-status')).toHaveText('Transcribing locally');
+  const pause = page.getByRole('button', { name: 'Pause transcription', exact: true });
+  const finish = page.getByRole('button', { name: 'Finish & review', exact: true });
+  await pause.click();
+  await expect(pause).toBeDisabled();
+  await expect(finish).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'New interview', exact: true })).toBeDisabled();
+  await page.evaluate(() => (window as unknown as { capture: { emitFinal(): void } }).capture.emitFinal());
+  await expect(page.getByText('Final fictional capture 1', { exact: true })).toBeVisible();
+  await expect(pause).toBeDisabled();
+  await page.evaluate(() => (window as unknown as { capture: { releaseStop(): void } }).capture.releaseStop());
+  await expect(page.getByTestId('desktop-recording-status')).toHaveText('Paused');
+  await saved(page);
+  const audio = await page.evaluate(async () => {
+    const db = await new Promise<IDBDatabase>((resolve, reject) => {
+      const request = indexedDB.open('meetfolio-desktop-v1', 1);
+      request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error);
+    });
+    try {
+      const book = await new Promise<{ activeId: string; interviews: { id: string; segments: { audio: unknown }[] }[] }>((resolve, reject) => {
+        const request = db.transaction('notebook', 'readonly').objectStore('notebook').get('current');
+        request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error);
+      });
+      return book.interviews.find(interview => interview.id === book.activeId)!.segments[0].audio;
+    } finally { db.close(); }
+  });
+  expect(audio).toEqual({ recordingId: '01234567-89ab-cdef-0123-456789abcde1', startMs: 25, endMs: 125 });
+  await page.getByRole('button', { name: 'Start transcription', exact: true }).click();
+  await expect(page.getByTestId('desktop-recording-status')).toHaveText('Transcribing locally');
+  expect(await page.evaluate(() => (window as unknown as { capture: { starts: number; stopCalls: number } }).capture.starts)).toBe(2);
+  await finish.click();
+  await expect(finish).toBeDisabled();
+  await page.evaluate(() => (window as unknown as { capture: { releaseStop(): void } }).capture.releaseStop());
+  await expect(page.getByRole('region', { name: 'Review original text' })).toBeVisible();
+  await expect(page.getByText('Final fictional capture 1', { exact: true })).toBeVisible();
+  expect(await page.evaluate(() => (window as unknown as { capture: { stopCalls: number } }).capture.stopCalls)).toBe(2);
+});
+
 test('native bridge contract: download, permission denial, interruption and reload recovery', async ({
   page,
 }, info) => {

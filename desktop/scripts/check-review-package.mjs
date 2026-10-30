@@ -4,10 +4,12 @@ import { createReadStream } from 'node:fs';
 import { createHash } from 'node:crypto';
 import path from 'node:path';
 import assert from 'node:assert/strict';
+import { parseArgs } from 'node:util';
 import { listPackage } from '@electron/asar';
 import checkPack from './check-pack.cjs';
 
-const root = path.resolve('work/desktop-packages');
+const { values } = parseArgs({ options: { out: { type: 'string', default: 'work/desktop-packages' } } });
+const root = path.resolve(values.out);
 const appOutDir = path.join(root, 'win-unpacked');
 await checkPack({ appOutDir, electronPlatformName: 'win32' });
 const entries = listPackage(path.join(appOutDir, 'resources/app.asar')).map(entry => entry.replace(/\\/g, '/'));

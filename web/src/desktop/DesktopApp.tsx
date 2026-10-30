@@ -29,6 +29,7 @@ import { ModelCard } from './ModelCard';
 import { Preparation } from './Preparation';
 import { LiveInterview } from './LiveInterview';
 import { ReviewExport } from './ReviewExport';
+import { Recordings } from './Recordings';
 import './desktop.css';
 
 const stageLabels: Record<Stage, string> = {
@@ -64,7 +65,7 @@ export default function DesktopApp({
   );
   const runtime = useLocalRuntime(patch);
   const i = store.book?.interviews.find((i) => i.id === store.book?.activeId);
-  const busy = !!i && ['starting', 'recording'].includes(i.recording);
+  const busy = runtime.settling || (!!i && ['starting', 'recording'].includes(i.recording));
   useEffect(() => {
     const change = () => setOnline(navigator.onLine);
     window.addEventListener('online', change);
@@ -419,12 +420,12 @@ export default function DesktopApp({
                 </div>
                 <p className="dt-fine">
                   Restoration creates local copies without overwriting existing interviews. Maximum JSON backup size:
-                  8 MB. Store backups securely.
+                  8 MB. JSON contains text and audio identifiers only, never WAV files. Export WAVs separately below. Store backups securely.
                 </p>
                 <div className="dt-feature">
                   <b>Current recovery build limitations</b>
                   <p>
-                    Historical web/server features, native WAV recording and PDF / DOCX extraction are NOT restored here. Previous
+                    Per-segment playback, combined audio backup and PDF / DOCX extraction are NOT restored here. Previous
                     server-backed AI experiments remain outside this local desktop recovery stage.
                   </p>
                   {standalone ? (
@@ -436,6 +437,7 @@ export default function DesktopApp({
                   )}
                 </div>
               </section>
+              <Recordings key={i.id} interviewId={i.id} />
             </div>
           ) : i.stage === 'prepare' ? (
             <Preparation

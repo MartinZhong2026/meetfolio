@@ -189,6 +189,13 @@ export function parseNotebook(value: unknown): Notebook {
           isImportant: bool(s.isImportant),
           source: choice(s.source, ['demo', 'manual', 'local']),
           updatedAt: str(s.updatedAt, 100),
+          ...(s.audio !== undefined ? { audio: (() => {
+            const audio = object(s.audio);
+            const recordingId = str(audio.recordingId, 36);
+            const startMs = num(audio.startMs), endMs = num(audio.endMs);
+            if (!/^[a-f0-9]{8}(-[a-f0-9]{4}){3}-[a-f0-9]{12}$/.test(recordingId) || endMs < startMs) return fail();
+            return { recordingId, startMs, endMs };
+          })() } : {}),
         };
       }),
       notes: list(i.notes, 10000, (v) => {
