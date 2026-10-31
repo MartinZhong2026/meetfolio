@@ -5,6 +5,7 @@ import path from 'node:path';
 import { XAsrModelManager, verifyXAsrArchive } from '../src/asr/xasrManager.js';
 import { XASR, modelFiles, sealModelCache, verifyModelCache } from '../src/asr/localXasrModel.js';
 import type { AsrConnection, AsrHandlers, AsrProvider } from '../src/asr/types.js';
+import { AsrError } from '../src/asr/types.js';
 import { createAsrFactory } from '../src/asr/factory.js';
 import { loadConfig } from '../src/config.js';
 
@@ -22,10 +23,28 @@ function fakeNative(failure = false) {
   const conn: AsrConnection = { sendAudio: vi.fn(), finish: vi.fn(async () => { handlers.onClosed({ clean: true }); return true; }), close: vi.fn(() => handlers.onClosed({ clean: false })) };
   const provider: AsrProvider = { name: 'test-only', model: 'mock', isDemo: false,
     connect: vi.fn(async (_opts, h) => { handlers = h; if (failure) throw new Error('Native DLL load failed'); return conn; }) };
-  return { provider, conn, result: () => handlers.onResult({ kind: 'final', key: '0', text: 'test fixture', startMs: 0, endMs: 100 }) };
+  return { provider, conn, closed: (error: AsrError) => handlers.onClosed({ clean: false, error }), result: () => handlers.onResult({ kind: 'final', key: '0', text: 'test fixture', startMs: 0, endMs: 100 }) };
 }
 
 describe('X-ASR manager lifecycle (injected native test double)', () => {
+  it('blocks file inference when the idle native process cannot be released', async () => {
+    const r = await root(); await installed(r); const fake = fakeNative();
+    const manager = new XAsrModelManager({ root: r, provider: () => fake.provider });
+    await manager.initialize();
+    vi.mocked(fake.conn.close).mockImplementation(() => fake.closed(new AsrError('fatal', 'local_asr_cleanup_timeout', 'Native process cleanup timed out')));
+    await expect(manager.suspend()).rejects.toThrow('cleanup timed out');
+    expect(manager.getStatus().state).toBe('error'); await manager.dispose();
+  });
+  it('releases an idle live model for file inference, reloads afterward and refuses an active capture', async () => {
+    const r = await root(); await installed(r); const fake = fakeNative();
+    const manager = new XAsrModelManager({ root: r, provider: () => fake.provider });
+    await manager.initialize(); await manager.suspend();
+    expect(fake.conn.close).toHaveBeenCalledTimes(1); expect(manager.getStatus().state).toBe('installed');
+    await manager.initialize(); expect(fake.provider.connect).toHaveBeenCalledTimes(2);
+    const connection = await manager.connect({ sampleRate: 16000, terms: [], languageHints: [] }, { onResult: vi.fn(), onClosed: vi.fn() });
+    await expect(manager.suspend()).rejects.toThrow('active');
+    await connection.finish(); await manager.dispose();
+  });
   it('never infers Ready from model files; loads before readiness and reuses the loaded connection', async () => {
     const r = await root(); await installed(r); const fake = fakeNative();
     const manager = new XAsrModelManager({ root: r, provider: () => fake.provider });

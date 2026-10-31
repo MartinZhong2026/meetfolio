@@ -9,6 +9,8 @@ export const CHANNEL = {
   preparePlayback: 'meetfolio:playback-prepare', releasePlayback: 'meetfolio:playback-release',
   importBegin: 'meetfolio:import-begin', importAppend: 'meetfolio:import-append', importFinish: 'meetfolio:import-finish', importCancel: 'meetfolio:import-cancel', importRecover: 'meetfolio:import-recover',
   speakerStatus: 'meetfolio:speaker-status', speakerInstall: 'meetfolio:speaker-install', speakerImport: 'meetfolio:speaker-import', speakerCancel: 'meetfolio:speaker-cancel',
+  decoderStatus: 'meetfolio:decoder-status', decoderInstall: 'meetfolio:decoder-install', decoderImport: 'meetfolio:decoder-import', decoderCancel: 'meetfolio:decoder-cancel',
+  selectAudio: 'meetfolio:audio-select', importFile: 'meetfolio:import-file', importResume: 'meetfolio:import-resume', importTasks: 'meetfolio:import-tasks',
 } as const;
 export function isAppUrl(value: string): boolean {
   try { const url = new URL(value); return url.protocol === 'meetfolio:' && url.hostname === 'app' && !url.username && !url.password && !url.port; }

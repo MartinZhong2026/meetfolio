@@ -45,6 +45,7 @@ export class XAsrModelManager extends EventEmitter implements AsrProvider {
   private operation?: Promise<void>;
   private controller?: AbortController;
   private warm?: AsrConnection;
+  private idleReleased?: (error?: Error) => void;
   private handlers?: AsrHandlers;
   private recording = false;
   private disposed = false;
@@ -206,7 +207,8 @@ export class XAsrModelManager extends EventEmitter implements AsrProvider {
         onClosed: info => {
           this.warm = undefined;
           this.recording = false;
-          this.update(this.disposed || info.clean ? 'installed' : 'error', info.error?.message);
+          this.update(this.disposed || info.clean || (this.idleReleased && !info.error) ? 'installed' : 'error', this.idleReleased && !info.error ? undefined : info.error?.message);
+          const released = this.idleReleased; this.idleReleased = undefined; released?.(info.error);
           const handlers = this.handlers;
           this.handlers = undefined;
           handlers?.onClosed(info);
@@ -236,5 +238,11 @@ export class XAsrModelManager extends EventEmitter implements AsrProvider {
     this.warm?.close();
     this.warm = undefined;
     this.update(this.installed() ? 'installed' : 'not-installed');
+  }
+  /** Release the idle live model while file inference owns the CPU/memory budget. */
+  async suspend(): Promise<void> {
+    if (this.recording || this.operation) throw new Error('Cannot suspend an active model operation');
+    if (!this.warm) return;
+    await new Promise<void>((resolve, reject) => { this.idleReleased = error => error ? reject(error) : resolve(); this.warm!.close(); });
   }
 }
