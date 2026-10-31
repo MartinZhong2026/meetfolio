@@ -162,20 +162,41 @@ jobs:
         shell: pwsh
         run: |
           $fixture = Get-Content -Raw work/phase3a/ci-fixture/fixture.json | ConvertFrom-Json
-          node desktop/scripts/native-smoke.mjs --executable work/desktop-packages/win-unpacked/Meetfolio.exe --archive $fixture.archive --audio $fixture.audio --out work/phase3a/ci-packaged-smoke
+          node desktop/scripts/native-smoke.mjs --executable work/phase5/packages/win-unpacked/MeetfolioPreview.exe --archive $fixture.archive --audio $fixture.audio --out work/phase3a/ci-packaged-smoke
       - name: Verify packaged segment playback without installing
-        run: node desktop/scripts/playback-smoke.mjs --executable work/desktop-packages/win-unpacked/Meetfolio.exe --out work/phase3b2/ci-packaged
+        run: node desktop/scripts/playback-smoke.mjs --executable work/phase5/packages/win-unpacked/MeetfolioPreview.exe --out work/phase3b2/ci-packaged
       - name: Verify packaged offline audio import and speaker separation
         shell: pwsh
         run: |
           $fixture = Get-Content -Raw work/phase4/ci-fixture/fixture.json | ConvertFrom-Json
-          node desktop/scripts/import-smoke.mjs --executable work/desktop-packages/win-unpacked/Meetfolio.exe --audio $fixture.audio --speakers $fixture.speakers --automatic --out work/phase4/ci-packaged
+          node desktop/scripts/import-smoke.mjs --executable work/phase5/packages/win-unpacked/MeetfolioPreview.exe --audio $fixture.audio --speakers $fixture.speakers --automatic --out work/phase4/ci-packaged
       - name: Packaged decoder and checkpoint resume without installing
         shell: pwsh
         run: |
           $fixture = Get-Content -Raw work/phase4/ci-fixture/fixture.json | ConvertFrom-Json
           $decoder = Get-Content -Raw work/phase4-1/ci-decoder/fixture.json | ConvertFrom-Json
-          node desktop/scripts/readiness-smoke.mjs --executable work/desktop-packages/win-unpacked/Meetfolio.exe --decoder $decoder.archive --audio $fixture.audio --speakers $fixture.speakers --minutes 4 --out work/phase4-1/ci-packaged
+          node desktop/scripts/readiness-smoke.mjs --executable work/phase5/packages/win-unpacked/MeetfolioPreview.exe --decoder $decoder.archive --audio $fixture.audio --speakers $fixture.speakers --minutes 4 --out work/phase4-1/ci-packaged
+      - name: Actual per-user preview installation and normal startup
+        run: node desktop/scripts/preview-install.mjs --mode install --installer work/phase5/packages/Meetfolio-0.2.0-preview.1-windows-x64-setup.exe
+      - name: Installed preview downloads and verifies the local model
+        run: node desktop/scripts/model-download-smoke.mjs --executable work/phase5/installed-check/application/MeetfolioPreview.exe
+      - name: Installed preview offline codecs, diarization, playback, edits and checkpoint resume
+        shell: pwsh
+        run: |
+          $fixture = Get-Content -Raw work/phase4/ci-fixture/fixture.json | ConvertFrom-Json
+          $decoder = Get-Content -Raw work/phase4-1/ci-decoder/fixture.json | ConvertFrom-Json
+          node desktop/scripts/readiness-smoke.mjs --executable work/phase5/installed-check/application/MeetfolioPreview.exe --decoder $decoder.archive --audio $fixture.audio --speakers $fixture.speakers --minutes 4 --out work/phase5/installed-readiness
+      - name: Actual preview uninstall retains data
+        run: node desktop/scripts/preview-install.mjs --mode uninstall
+      - name: Prepare Windows downloads and checksums after verification
+        run: node desktop/scripts/preview-artifacts.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: meetfolio-preview-windows-x64
+          path: work/phase5/downloads/win32-x64/
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 0
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -183,10 +204,93 @@ jobs:
           path: |
             work/phase3a/ci-smoke/native-smoke.json
             work/phase3a/ci-packaged-smoke/native-smoke.json
-            work/desktop-packages/static-review.json
+            work/phase5/packages/static-review.json
             work/phase3b2/ci-source/playback-smoke.json
             work/phase3b2/ci-packaged/playback-smoke.json
             work/phase4/ci-source/import-smoke.json
             work/phase4/ci-packaged/import-smoke.json
             work/phase4-1/ci-source/readiness-smoke.json
             work/phase4-1/ci-packaged/readiness-smoke.json
+            work/phase5/installed-check/installation-status.json
+            work/phase5/model-download/download-status.json
+            work/phase5/installed-readiness/readiness-smoke.json
+
+  macos-native:
+    name: macos-${{ matrix.arch }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15
+            arch: arm64
+          - runner: macos-15-intel
+            arch: x64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Require native architecture (no Rosetta / cross compilation)
+        run: node -e "if(process.platform!=='darwin'||process.arch!=='${{ matrix.arch }}')process.exit(1)"
+      - run: npm ci --include=optional
+      - run: npm run prepare:electron
+      - run: npm run build:electron
+      - run: node server/scripts/check-xasr-runtime.mjs
+      - run: npm run test:native-runtime
+      - run: npm run test -w desktop
+      - name: Verify official model download and native inference preparation
+        run: node desktop/scripts/prepare-native-fixture.mjs
+      - run: node desktop/scripts/prepare-import-fixture.mjs
+      - name: Prepare system decoder and test-only codec encoder
+        run: |
+          node desktop/scripts/prepare-readiness-fixture.mjs
+          if ! command -v ffmpeg >/dev/null; then brew install ffmpeg; fi
+      - name: Actual system-codec stereo sample-rate conversion
+        run: node desktop/scripts/mac-decoder-smoke.mjs
+      - name: Source system codecs, two-hour import, diarization and restart recovery
+        run: |
+          audio=$(node -p "JSON.parse(require('fs').readFileSync('work/phase4/ci-fixture/fixture.json')).audio")
+          speakers=$(node -p "JSON.parse(require('fs').readFileSync('work/phase4/ci-fixture/fixture.json')).speakers")
+          node desktop/scripts/readiness-smoke.mjs --audio "$audio" --speakers "$speakers" --encoder "$(command -v ffmpeg)" --out work/phase5/mac-source
+      - name: Build native ad-hoc preview DMG and ZIP (no notarization)
+        run: npx electron-builder --mac --${{ matrix.arch }} --config desktop/electron-builder.yml --publish never
+      - name: Mount actual DMG, copy app and verify normal startup / architecture / signatures
+        run: node desktop/scripts/mac-preview-install.mjs --mode install
+      - name: Copied preview downloads and verifies the local model
+        run: node desktop/scripts/model-download-smoke.mjs --executable 'work/phase5/mac-installed/MeetfolioPreview.app/Contents/MacOS/MeetfolioPreview'
+      - name: Copied app sandbox, preload and native module startup
+        run: node desktop/scripts/native-smoke.mjs --executable 'work/phase5/mac-installed/MeetfolioPreview.app/Contents/MacOS/MeetfolioPreview' --out work/phase5/mac-native
+      - name: Copied app exact segment playback and ownership guards
+        run: node desktop/scripts/playback-smoke.mjs --executable 'work/phase5/mac-installed/MeetfolioPreview.app/Contents/MacOS/MeetfolioPreview' --out work/phase5/mac-playback
+      - name: Copied app WAV MP3 M4A, bilingual ASR, voices, edits, exports and checkpoint resume
+        run: |
+          audio=$(node -p "JSON.parse(require('fs').readFileSync('work/phase4/ci-fixture/fixture.json')).audio")
+          speakers=$(node -p "JSON.parse(require('fs').readFileSync('work/phase4/ci-fixture/fixture.json')).speakers")
+          node desktop/scripts/readiness-smoke.mjs --executable 'work/phase5/mac-installed/MeetfolioPreview.app/Contents/MacOS/MeetfolioPreview' --audio "$audio" --speakers "$speakers" --encoder "$(command -v ffmpeg)" --minutes 4 --out work/phase5/mac-packaged
+      - name: Remove only the test app copy and verify retained preview data
+        run: node desktop/scripts/mac-preview-install.mjs --mode uninstall
+      - name: Prepare verified macOS downloads and checksums
+        run: node desktop/scripts/preview-artifacts.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: meetfolio-preview-macos-${{ matrix.arch }}
+          path: work/phase5/downloads/darwin-${{ matrix.arch }}/
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 0
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: macos-${{ matrix.arch }}-status-only
+          path: |
+            work/phase5/mac-source/readiness-smoke.json
+            work/phase5/mac-installed/installation-status.json
+            work/phase5/model-download/download-status.json
+            work/phase5/mac-native/native-smoke.json
+            work/phase5/mac-playback/playback-smoke.json
+            work/phase5/mac-packaged/readiness-smoke.json

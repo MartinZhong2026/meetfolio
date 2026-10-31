@@ -112,6 +112,10 @@ try {
     await expect(page.getByTestId('desktop-recording-status')).toHaveText('Transcribing locally', { timeout: 45000 });
     await expect.poll(async () => (await page.evaluate(() => window.meetfolioDesktop.listRecordings())).find(item => item.status === 'recording')?.bytes ?? 0).toBeGreaterThan(32000);
     const child = instance.process();
+    // CIM startup may be slow on shared Windows runners. Bound it independently;
+    // the process-close deadline starts only after we have the ownership snapshot.
+    const processes = process.platform === 'win32' ? JSON.parse(execFileSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command',
+      'Get-CimInstance Win32_Process | Select-Object ProcessId,ParentProcessId | ConvertTo-Json -Compress'], { windowsHide: true, encoding: 'utf8', timeout: 30000 })) : [];
     // Wait for inherited Chromium handles as well as the host. On Windows terminate only
     // this isolated test process tree; surviving GPU processes can retain profile locks.
     const exited = new Promise((resolve, reject) => {
@@ -121,8 +125,6 @@ try {
     if (process.platform === 'win32') {
       // taskkill /T can terminate the ASR/renderer first, allowing Main to finalize an interrupted WAV.
       // Snapshot this isolated tree, kill Main first, then clean up only its known descendants.
-      const processes = JSON.parse(execFileSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command',
-        'Get-CimInstance Win32_Process | Select-Object ProcessId,ParentProcessId | ConvertTo-Json -Compress'], { windowsHide: true, encoding: 'utf8' }));
       const owned = new Set([child.pid]);
       let added = true;
       while (added) { added = false; for (const proc of processes) if (owned.has(proc.ParentProcessId) && !owned.has(proc.ProcessId)) { owned.add(proc.ProcessId); added = true; } }

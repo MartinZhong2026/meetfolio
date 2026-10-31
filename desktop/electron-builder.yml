@@ -1,6 +1,6 @@
-appId: org.meetfolio.desktop
-productName: Meetfolio
-executableName: Meetfolio
+appId: org.meetfolio.desktop.preview
+productName: Meetfolio Preview
+executableName: MeetfolioPreview
 copyright: Copyright © 2026 Martin Zhong
 asar: true
 electronDist: node_modules/electron/dist
@@ -9,7 +9,7 @@ npmRebuild: false
 buildDependenciesFromSource: false
 directories:
   app: desktop
-  output: work/desktop-packages
+  output: work/phase5/packages
 files:
   - dist/**/*.cjs
   - package.json
@@ -46,7 +46,7 @@ nsis:
   runAfterFinish: true
   createDesktopShortcut: true
   createStartMenuShortcut: true
-  shortcutName: Meetfolio
+  shortcutName: Meetfolio Preview
   installerIcon: desktop/assets/meetfolio.ico
   uninstallerIcon: desktop/assets/meetfolio.ico
   installerHeader: desktop/assets/installer-header.bmp
@@ -57,3 +57,22 @@ nsis:
   unicode: true
 linux:
   target: dir
+mac:
+  icon: desktop/assets/meetfolio.icns
+  target: [dmg, zip]
+  category: public.app-category.productivity
+  artifactName: Meetfolio-${version}-macos-${arch}.${ext}
+  minimumSystemVersion: '15.0.0'
+  identity: '-'
+  # Ad-hoc preview only. Developer ID builds must enable hardened runtime + notarization.
+  hardenedRuntime: false
+  entitlements: desktop/entitlements.mac.plist
+  entitlementsInherit: desktop/entitlements.mac.plist
+  notarize: false
+  extendInfo:
+    NSMicrophoneUsageDescription: Meetfolio records audio locally for offline transcription after your consent.
+    NSAppTransportSecurity:
+      NSAllowsArbitraryLoads: false
+dmg:
+  title: Meetfolio Preview
+  sign: false

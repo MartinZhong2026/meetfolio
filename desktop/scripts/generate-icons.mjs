@@ -33,6 +33,12 @@ for (let i = 0; i < sizes.length; i++) {
   directory.writeUInt32LE(frames[i].length, entry + 8); directory.writeUInt32LE(offset, entry + 12); offset += frames[i].length;
 }
 await fs.writeFile(path.join(assets, 'meetfolio.ico'), Buffer.concat([directory, ...frames]));
+const icns = [];
+for (const [type, size] of [['icp4',16],['icp5',32],['icp6',64],['ic07',128],['ic08',256],['ic09',512],['ic10',1024]]) {
+  const png = await raster(size).png().toBuffer(); const h = Buffer.alloc(8);h.write(type);h.writeUInt32BE(png.length+8,4);icns.push(h,png);
+}
+const icnsHeader=Buffer.alloc(8);icnsHeader.write('icns');icnsHeader.writeUInt32BE(8+icns.reduce((n,b)=>n+b.length,0),4);
+await fs.writeFile(path.join(assets,'meetfolio.icns'),Buffer.concat([icnsHeader,...icns]));
 async function bitmap(name, width, height, background, size, left, top) {
   const rgb = await sharp({ create: { width, height, channels: 3, background } })
     .composite([{ input: await raster(size).png().toBuffer(), left, top }]).removeAlpha().raw().toBuffer();

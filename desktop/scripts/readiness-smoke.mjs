@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { promisify, parseArgs } from 'node:util';
 import { XASR } from '../../server/dist/asr/localXasrModel.js';
-const { values } = parseArgs({ options: { executable:{type:'string'}, decoder:{type:'string',default:'work/phase4-1/decoder9.zip'},
+const { values } = parseArgs({ options: { executable:{type:'string'}, encoder:{type:'string'}, decoder:{type:'string',default:'work/phase4-1/decoder9.zip'},
   audio:{type:'string',default:'work/phase4/four-speakers.wav'}, speakers:{type:'string',default:'work/phase4/models/sherpa-onnx-pyannote-segmentation-3-0'},
   minutes:{type:'string',default:'120'}, out:{type:'string',default:'work/phase4-1/readiness-smoke'} } });
 const out=path.resolve(values.out);await fs.mkdir(out,{recursive:true});const profile=await fs.mkdtemp(path.join(out,'profile-'));
@@ -30,12 +30,14 @@ async function dialogFile(file){await app.evaluate(({dialog},file)=>{dialog.show
 try{
   let page=await launch();await page.getByRole('button',{name:'Import audio',exact:true}).click();
   let importer=page.getByRole('region',{name:'Import audio recording'});
-  await dialogFile(values.decoder);await importer.getByRole('button',{name:'Import decoder ZIP',exact:true}).click();
-  await expect(importer.getByText('Local decoder ready · up to 120 minutes / 2 GiB',{exact:true})).toBeVisible({timeout:60000});
+  if(process.platform !== 'darwin') {
+    await dialogFile(values.decoder);await importer.getByRole('button',{name:'Import decoder ZIP',exact:true}).click();
+    await expect(importer.getByText('Local decoder ready · up to 120 minutes / 2 GiB',{exact:true})).toBeVisible({timeout:60000});
+  } else { await expect(importer.getByRole('button',{name:'Choose recording',exact:true})).toBeVisible({timeout:30000}); }
   assert((await page.evaluate(()=>window.meetfolioDesktop.getDecoderStatus())).ready);
   await dialogFile(values.speakers);await importer.getByRole('button',{name:'Import model folder',exact:true}).click();
   await expect(importer.getByText('Speaker models ready for offline use.',{exact:true})).toBeVisible({timeout:30000});
-  report.stages.push('pinned upstream decoder archive/executable verification and offline speaker model import');
+  report.stages.push(process.platform === 'darwin' ? 'bundled architecture-specific AVFoundation helper signature and offline speaker models' : 'pinned upstream decoder archive/executable verification and offline speaker model import');
   await dialogFile(source);await importer.getByRole('button',{name:'Choose recording',exact:true}).click();
   const duration=[Math.floor(minutes/60),minutes%60,0].map(n=>String(n).padStart(2,'0')).join(':');
   // Native preflight has a 20-second probe bound plus executable verification.
@@ -74,7 +76,7 @@ try{
   await expect.poll(async()=>fs.readFile(exported,'utf8').catch(()=>''),{timeout:10000}).toContain('preserve across resume');
   report.stages.push('restart, original-source independence, resume, stable segment IDs, corrected text/voice retention, actual playback and native export');
   // Exercise the native codec route too; only the OS picker is stubbed, not decoding/inference.
-  const decoder=await fs.readdir(path.join(profile,'decoders'));const executable=path.join(profile,'decoders',decoder.find(n=>n==='ffmpeg-9.0.2-gyan-win64'),'ffmpeg.exe');
+  const executable=process.platform === 'darwin' ? (values.encoder || 'ffmpeg') : path.join(profile,'decoders','ffmpeg-9.0.2-gyan-win64','ffmpeg.exe');
   const mixed=path.resolve(`work/phase3a/ci-fixture/model/${XASR.id}/test_wavs/0.wav`);
   report.nativeFormats=[];
   for(const format of ['mp3','m4a']){

@@ -21,6 +21,8 @@ Do not label this repository or its packages as a complete, tested v0.6.0 releas
 
 ## Developer checks
 
+Phase 5 prepares **Meetfolio 0.2.0-preview.1** as a separate Windows x64 / macOS arm64 / macOS x64 preview application. See [installation and verification limits](docs/engineering/PHASE5_INSTALL.zh-CN.md) and [native build/distribution contract](docs/engineering/PHASE5_DESKTOP_RELEASE.md). Download availability and actual per-platform results are recorded in its Draft PR; builds are not public release approval. Preview profiles are separate from the original Meetfolio data. Mac builds use system AVFoundation decoding rather than the Windows-only FFmpeg download.
+
 Prerequisite: Node.js 22 (exact version in `.nvmrc`) and npm. See [engineering workflow](docs/engineering/CODEX_WORKFLOW.md) and [agent rules](AGENTS.md) for safe database setup, CI, and native acceptance limits.
 
 ```bash
