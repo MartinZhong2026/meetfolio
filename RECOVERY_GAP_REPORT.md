@@ -1,5 +1,11 @@
 ﻿# Meetfolio v0.1 → v0.6.0｜更新历程、源码差异与增量重建审计
 
+## Phase 5 桌面预览分发（2026-10-31）
+
+从 PR #6 的 `9f08dc9` 独立建立 Phase 5，版本 `0.2.0-preview.1`，使用单独 Preview 应用标识、程序名和数据目录。Windows 已完成本地真实 NSIS 安装、正常窗口启动、安装后模型下载及校验、原生导入/分离/回放/修改/导出/检查点续跑，以及卸载保留数据。macOS 新增系统 AVFoundation 流式解码桥、原生 arm64/x64 Runner 构建和 DMG/ZIP 安装复制测试；是否通过以本阶段实际 CI 和 Draft PR 交付记录为准，不能将 Windows 检查当作 Mac 验收。
+
+安装器不包含模型或 Windows FFmpeg；Mac 不复用 Windows 专用解码器。Windows 未签名，Mac 为 ad-hoc、无 Developer ID/公证且未启用 Hardened Runtime 的预览配置，不修改 Gatekeeper/TCC/SIP 等系统保护。通过验证的平台才生成下载产物、版本/提交信息和 SHA-256；Draft Release 不等于公开正式发布。完整备份及其他新功能未加入。详见 [分发契约](docs/engineering/PHASE5_DESKTOP_RELEASE.md) 和 [安装与人工验收](docs/engineering/PHASE5_INSTALL.zh-CN.md)。以下为历史阶段快照。
+
 ## Phase 4.1 长音频与产品可用性（2026-10-31）
 
 从 PR #5 的 `744adf9` 独立增量开发。Windows x64 可选安装校验固定 SHA-256 的本地 FFmpeg 解码器，原生文件选择器支持 120 分钟 / 2 GiB；浏览器小文件路径保留 64 MiB / 20 分钟限制。规范化音频流式写盘，推理使用两分钟固定缓冲、持久检查点和稳定片段 ID；暂停后可重启并从自有 WAV 继续，保留已修改文字和说话人。Review 分页、跨页证据跳转和待回听队列改善长记录操作。JSON 仍不包含 WAV、原生检查点及模型，完整备份恢复留待后续。
