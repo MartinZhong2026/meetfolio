@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { localRuntime, type RecordingInfo } from './runtime';
 import { fmtClock } from '../lib/format';
+import type { Segment } from '../lib/types';
 
 /** Audio lives outside JSON/IndexedDB. Keep orphaned files discoverable after notebook restore. */
-export function Recordings({ interviewId }: { interviewId: string }) {
+export function Recordings({ interviewId, onRecoverTranscript }: { interviewId: string; onRecoverTranscript?: (segments: Segment[]) => void }) {
   const runtime = localRuntime();
   const [items, setItems] = useState<RecordingInfo[]>([]);
   const [all, setAll] = useState(false);
@@ -47,7 +48,7 @@ export function Recordings({ interviewId }: { interviewId: string }) {
   return <section className="dt-card" aria-label="Local WAV recordings">
     <h2>Local WAV recordings</h2>
     <p className="dt-muted">Each capture is a separate 16 kHz mono WAV. Paused time is excluded. Interrupted files may be incomplete; listen and verify them before research use.</p>
-    <p>JSON backups and text exports do not contain audio. Export each WAV separately. Audio is local and unencrypted; per-segment playback and combined audio backup are pending.</p>
+    <p>JSON backups and text exports do not contain audio. Export each WAV separately. Audio is local and unencrypted; combined audio backup is pending.</p>
     <div className="dt-actions">
       <button className="dt-btn" disabled={working} onClick={() => void refresh()}>Refresh recordings</button>
       <label><input type="checkbox" checked={all} onChange={e => setAll(e.target.checked)} /> Show all local recordings (including restored or missing interviews)</label>
@@ -59,6 +60,12 @@ export function Recordings({ interviewId }: { interviewId: string }) {
       <div className="dt-actions">
         <button className="dt-btn" disabled={working || item.status === 'recording' || item.recoverable || item.unavailable} onClick={() => void action(item)}>Export WAV {item.id.slice(0, 8)}</button>
         {item.recoverable && <button className="dt-btn" disabled={working} onClick={() => void action(item, true)}>Recover saved audio {item.id.slice(0, 8)}</button>}
+        {item.interviewId === interviewId && !item.unavailable && runtime.recoverAudioImport && onRecoverTranscript && <button className="dt-btn" disabled={working || item.status === 'recording' || item.recoverable} onClick={async () => {
+          setWorking(true); setMessage('');
+          try { onRecoverTranscript(await runtime.recoverAudioImport!({ interviewId, recordingId: item.id })); setMessage('Saved import transcript recovered; existing edits preserved.'); }
+          catch { setMessage('No completed import transcript available for this WAV. The audio is retained and can be exported and imported again.'); }
+          finally { setWorking(false); }
+        }}>Recover import text {item.id.slice(0, 8)}</button>}
       </div>
     </li>)}</ul>
     <p role="status" aria-live="polite">{working ? 'Reading or saving local audio…' : message}</p>

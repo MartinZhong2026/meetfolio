@@ -10,6 +10,7 @@ import {
   Settings2,
   ShieldCheck,
   Upload,
+  AudioLines,
 } from 'lucide-react';
 import { uuid } from '../lib/format';
 import type { Segment } from '../lib/types';
@@ -30,6 +31,8 @@ import { Preparation } from './Preparation';
 import { LiveInterview } from './LiveInterview';
 import { ReviewExport } from './ReviewExport';
 import { Recordings } from './Recordings';
+import { AudioImport } from './AudioImport';
+import { appendImportedTranscript } from './importTranscript';
 import './desktop.css';
 
 const stageLabels: Record<Stage, string> = {
@@ -50,6 +53,8 @@ export default function DesktopApp({
   const store = useNotebook();
   const [message, setMessage] = useState('');
   const [settings, setSettings] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const [importBusy, setImportBusy] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [online, setOnline] = useState(navigator.onLine);
   const [librarySearch, setLibrarySearch] = useState('');
@@ -65,7 +70,7 @@ export default function DesktopApp({
   );
   const runtime = useLocalRuntime(patch);
   const i = store.book?.interviews.find((i) => i.id === store.book?.activeId);
-  const busy = runtime.settling || (!!i && ['starting', 'recording'].includes(i.recording));
+  const busy = importBusy || runtime.settling || (!!i && ['starting', 'recording'].includes(i.recording));
   useEffect(() => {
     const change = () => setOnline(navigator.onLine);
     window.addEventListener('online', change);
@@ -114,6 +119,7 @@ export default function DesktopApp({
     }));
   function go(stage: Stage) {
     if (!i) return;
+    if (importBusy) return;
     if (busy && stage !== 'live') {
       setMessage('Pause or finish the recording before changing stages.');
       return;
@@ -124,6 +130,7 @@ export default function DesktopApp({
     }
     save({ stage, questions: questionsFromGuide(i.guide, i.questions) });
     setSettings(false);
+    setImportOpen(false);
     requestAnimationFrame(() => stage === 'live' ? document.querySelector<HTMLElement>('.dt-live-title')?.focus() : heading.current?.focus());
   }
   function create(synthetic = false) {
@@ -135,6 +142,7 @@ export default function DesktopApp({
       interviews: [next, ...b.interviews],
     }));
     setSettings(false);
+    setImportOpen(false);
     setMessage(
       synthetic
         ? 'Fictional demo loaded; no real microphone or speech recognition used.'
@@ -194,7 +202,7 @@ export default function DesktopApp({
     if (fileInput.current) fileInput.current.value = '';
   }
   return (
-    <div className={`dt-app stage-${i.stage}`}>
+    <div className={`dt-app stage-${i.stage}${settings ? ' view-settings' : importOpen ? ' view-import' : ''}`}>
       <a className="dt-skip" href="#desktop-main">
         Skip to main content
       </a>
@@ -210,15 +218,24 @@ export default function DesktopApp({
         </a>
         <p className="dt-nav-meta">Personal workspace</p>
         <button
-          className="dt-nav active"
+          className={`dt-nav${!settings && !importOpen ? ' active' : ''}`}
           disabled={busy}
           onClick={() => {
             setSettings(false);
+            setImportOpen(false);
             setMessage('Recent local interviews are listed below.');
           }}
         >
           <Grid2X2 size={17} />
           My interviews
+        </button>
+        <button
+          className={`dt-nav${importOpen && !settings ? ' active' : ''}`}
+          disabled={busy}
+          onClick={() => { setSettings(false); setImportOpen(true); }}
+        >
+          <AudioLines size={18} />
+          Import audio
         </button>
         <button
           className="dt-nav"
@@ -258,6 +275,7 @@ export default function DesktopApp({
               onClick={() => {
                 store.update((b) => ({ ...b, activeId: item.id }));
                 setSettings(false);
+                setImportOpen(false);
               }}
             >
               <strong>
@@ -325,7 +343,7 @@ export default function DesktopApp({
             <div>
               <div className="dt-eyebrow">{headings[i.stage][1]}</div>
               <h1 ref={heading} tabIndex={-1}>
-                {headings[i.stage][0]}
+                {settings ? 'Models & local storage' : importOpen ? 'Import a recording' : headings[i.stage][0]}
               </h1>
               <p>
                 {i.title || 'New research interview'}{' '}
@@ -364,7 +382,7 @@ export default function DesktopApp({
                 key={stage}
                 onClick={() => go(stage)}
                 aria-current={i.stage === stage ? 'step' : undefined}
-                disabled={busy && stage !== 'live'}
+                disabled={importBusy || (busy && stage !== 'live')}
               >
                 <span>0{n + 1}</span>
                 {stageLabels[stage]}
@@ -391,7 +409,10 @@ export default function DesktopApp({
               </p>
             </div>
           )}
-          {settings ? (
+          {importOpen && !settings ? <AudioImport key={i.id} i={i} ready={runtime.ready} onBusy={setImportBusy} onClose={() => setImportOpen(false)} onDone={(segments, durationMs, name) => {
+            patch(i.id, current => appendImportedTranscript(current, segments, durationMs, name));
+            setImportOpen(false); setMessage(`Imported ${name}: ${segments.length} transcript segments. Review text, speaker labels and audio before using them as evidence.`);
+          }}/> : settings ? (
             <div className="dt-prep-grid">
               <ModelCard runtime={runtime} />
               <section className="dt-card">
@@ -425,7 +446,7 @@ export default function DesktopApp({
                 <div className="dt-feature">
                   <b>Current recovery build limitations</b>
                   <p>
-                    Per-segment playback, combined audio backup and PDF / DOCX extraction are NOT restored here. Previous
+                    Combined audio backup and PDF / DOCX extraction are not restored here. Previous
                     server-backed AI experiments remain outside this local desktop recovery stage.
                   </p>
                   {standalone ? (
@@ -437,10 +458,13 @@ export default function DesktopApp({
                   )}
                 </div>
               </section>
-              <Recordings key={i.id} interviewId={i.id} />
+              <Recordings key={i.id} interviewId={i.id} onRecoverTranscript={segments => {
+                patch(i.id, current => appendImportedTranscript(current, segments, Math.max(0, ...segments.map(s => s.endMs))));
+                setMessage('Recovered saved import text. Existing segment edits were preserved.');
+              }}/>
             </div>
           ) : i.stage === 'prepare' ? (
-            <Preparation
+            <><section className="dt-source-choice" aria-label="Choose conversation source"><div><span className="dt-eyebrow">YOUR NEXT CONVERSATION</span><h2>Listen closely. Keep the context.</h2><p>Prepare your research, capture a live conversation, or work from an existing recording.</p></div><button className="dt-btn" disabled={busy} onClick={() => setImportOpen(true)}><AudioLines size={17}/>Import recording</button></section><Preparation
               i={i}
               save={save}
               setMessage={setMessage}
@@ -448,7 +472,7 @@ export default function DesktopApp({
               go={go}
               create={create}
               interviewCount={book.interviews.length}
-            />
+            /></>
           ) : i.stage === 'live' ? (
             <LiveInterview
               i={i}
@@ -475,7 +499,7 @@ export default function DesktopApp({
           </p>
           <footer className="dt-footer">
             <span>◆ Meetfolio Desktop · Local research workspace</span>
-            <button onClick={() => setSettings(true)}>
+            <button disabled={busy} onClick={() => setSettings(true)}>
               <ShieldCheck size={12} />
               Local storage & backup info
             </button>

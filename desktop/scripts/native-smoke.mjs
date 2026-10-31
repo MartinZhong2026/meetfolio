@@ -78,7 +78,7 @@ try {
     assert.equal(firstRecordings.length, 1);
     assert.equal(firstRecordings[0].status, 'complete');
     assert(firstRecordings[0].bytes > 0 && firstRecordings[0].durationMs === firstRecordings[0].bytes / 32);
-    await expect(page.getByText(/^WAV .*file time/).first()).toBeVisible();
+    await expect(page.getByText(/^Original audio ·/).first()).toBeVisible();
     let evidence = await page.locator('.dt-segment').count(); assert(evidence > 0);
     await page.getByRole('button', { name: 'Start transcription', exact: true }).click();
     await expect(page.getByTestId('desktop-recording-status')).toHaveText('Transcribing locally', { timeout: 45000 });

@@ -1,0 +1,43 @@
+import { expect, test } from '@playwright/test';
+import AxeBuilder from '@axe-core/playwright';
+test('review desk searches, filters and corrects speakers while preserving text, citations and backup', async ({ page }) => {
+  await page.goto('/'); await page.getByRole('button', { name: 'Load fictional demo', exact: true }).click();
+  await page.getByRole('button', { name: 'Review & export', exact: false }).click();
+  const sources = page.getByRole('region', { name: 'Review original text' });
+  await expect(sources.locator('.dt-segment')).toHaveCount(5);
+  await page.getByRole('searchbox', { name: 'Search transcript', exact: true }).fill('medicine');
+  await expect(sources.locator('.dt-segment')).toHaveCount(2);
+  await page.getByRole('searchbox', { name: 'Search transcript', exact: true }).fill('');
+  await page.getByRole('combobox', { name: 'Filter transcript by speaker' }).selectOption('Interviewer');
+  await expect(sources.locator('.dt-segment')).toHaveCount(2);
+  // Evidence citations clear active filters, reveal and focus the original source.
+  await page.getByRole('button', { name: 'Source 00:18:14 ↗', exact: true }).click();
+  await expect(page.locator('#review-seg-2')).toBeFocused();
+  await page.getByRole('button', { name: 'Rename Participant P07 throughout interview', exact: true }).click();
+  await page.getByRole('textbox', { name: 'Rename Participant P07', exact: true }).fill('Participant A');
+  await page.getByRole('button', { name: 'Save name', exact: true }).click();
+  await expect(sources.getByRole('button', { name: /Participant A · Correct speaker/ })).toHaveCount(3);
+  await sources.getByRole('button', { name: /Interviewer · Correct speaker for segment 1$/ }).click();
+  await page.getByRole('textbox', { name: 'Speaker for segment 1', exact: true }).fill('Researcher');
+  await page.getByRole('button', { name: 'Save speaker', exact: true }).click();
+  await page.getByRole('button', { name: 'Marked', exact: true }).click();
+  await expect(sources.locator('.dt-segment')).toHaveCount(2);
+  await page.getByRole('button', { name: 'Marked', exact: true }).click();
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+  await expect(page.getByTestId('desktop-save-status')).toHaveText('Saved locally');
+  await page.reload();
+  await expect(sources.getByRole('button', { name: /Researcher · Correct speaker for segment 1$/ })).toBeVisible();
+  await expect(sources.getByRole('button', { name: /Participant A · Correct speaker/ })).toHaveCount(3);
+});
+test('audio import presents honest local requirements, rejects invalid files and is accessible', async ({ page }, info) => {
+  await page.goto('/'); await page.getByRole('button', { name: 'Import audio', exact: true }).click();
+  const importer = page.getByRole('region', { name: 'Import audio recording' });
+  await expect(importer.getByRole('button', { name: 'Transcribe recording', exact: true })).toBeDisabled();
+  await importer.getByLabel('Choose audio recording').setInputFiles({ name: 'unsafe.exe', mimeType: 'application/octet-stream', buffer: Buffer.from('fixture') });
+  await expect(importer.getByRole('alert')).toContainText('Choose a WAV, MP3 or M4A');
+  await importer.getByLabel('Choose audio recording').setInputFiles({ name: 'Public interview.wav', mimeType: 'audio/wav', buffer: Buffer.from('fictional header only; decoding is tested in actual Electron') });
+  await importer.getByRole('checkbox', { name: 'I have permission to process this recording locally.' }).check();
+  await expect(importer.getByRole('button', { name: 'Transcribe recording', exact: true })).toBeDisabled();
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+  await page.screenshot({ path: info.outputPath('audio-import.png'), fullPage: false });
+});

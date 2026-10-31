@@ -12,6 +12,7 @@ async function shot(page: Page, name: string, info: import('@playwright/test').T
   await page.evaluate(() => {
     (document.activeElement as HTMLElement)?.blur();
     window.scrollTo(0, 0);
+    document.querySelectorAll('.dt-review-inspector, .dt-review-scroll').forEach(element => element.scrollTo(0, 0));
   });
   await page.screenshot({
     path: info.outputPath(`${name}.png`),
