@@ -125,6 +125,8 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci --include=optional
+      - name: Prepare checksum-verified Electron binary explicitly
+        run: npm run prepare:electron
       - run: npm run build:electron
       - run: node server/scripts/check-xasr-runtime.mjs
       - run: npm run test -w server -- --config vitest.native.config.ts
@@ -145,6 +147,14 @@ jobs:
         run: |
           $fixture = Get-Content -Raw work/phase4/ci-fixture/fixture.json | ConvertFrom-Json
           node desktop/scripts/import-smoke.mjs --audio $fixture.audio --speakers $fixture.speakers --out work/phase4/ci-source
+      - name: Prepare pinned optional decoder in isolated test cache
+        run: node desktop/scripts/prepare-readiness-fixture.mjs
+      - name: Two-hour native file import, checkpoint restart and correction retention
+        shell: pwsh
+        run: |
+          $fixture = Get-Content -Raw work/phase4/ci-fixture/fixture.json | ConvertFrom-Json
+          $decoder = Get-Content -Raw work/phase4-1/ci-decoder/fixture.json | ConvertFrom-Json
+          node desktop/scripts/readiness-smoke.mjs --decoder $decoder.archive --audio $fixture.audio --speakers $fixture.speakers --out work/phase4-1/ci-source
       - name: Build unsigned review installer without installing or publishing
         run: npx electron-builder --win nsis --x64 --config desktop/electron-builder.yml --publish never
       - run: node desktop/scripts/check-review-package.mjs
@@ -160,6 +170,12 @@ jobs:
         run: |
           $fixture = Get-Content -Raw work/phase4/ci-fixture/fixture.json | ConvertFrom-Json
           node desktop/scripts/import-smoke.mjs --executable work/desktop-packages/win-unpacked/Meetfolio.exe --audio $fixture.audio --speakers $fixture.speakers --automatic --out work/phase4/ci-packaged
+      - name: Packaged decoder and checkpoint resume without installing
+        shell: pwsh
+        run: |
+          $fixture = Get-Content -Raw work/phase4/ci-fixture/fixture.json | ConvertFrom-Json
+          $decoder = Get-Content -Raw work/phase4-1/ci-decoder/fixture.json | ConvertFrom-Json
+          node desktop/scripts/readiness-smoke.mjs --executable work/desktop-packages/win-unpacked/Meetfolio.exe --decoder $decoder.archive --audio $fixture.audio --speakers $fixture.speakers --minutes 4 --out work/phase4-1/ci-packaged
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -172,3 +188,5 @@ jobs:
             work/phase3b2/ci-packaged/playback-smoke.json
             work/phase4/ci-source/import-smoke.json
             work/phase4/ci-packaged/import-smoke.json
+            work/phase4-1/ci-source/readiness-smoke.json
+            work/phase4-1/ci-packaged/readiness-smoke.json

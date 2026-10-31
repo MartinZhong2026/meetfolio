@@ -59,19 +59,23 @@ export async function summaryRoutes(app: FastifyInstance, ctx: AppContext) {
       try {
         const { json, stats } = await summarize({ input, mode, llm: ctx.llm, config: ctx.config });
         const md = renderSummaryMarkdown(input, json, { interim: mode === 'interim' });
-        await db
-          .update(meetingSummaries)
-          .set({ status: 'ready', model: stats.model, generatedJson: json, generatedMd: md, stats, updatedAt: new Date() })
-          .where(eq(meetingSummaries.id, row!.id));
-        await db.update(meetings).set({ summaryStatus: 'ready', updatedAt: new Date() }).where(eq(meetings.id, m.id));
+        // Detail and dashboard must observe the same completed state.
+        await db.transaction(async tx => {
+          await tx.update(meetingSummaries)
+            .set({ status: 'ready', model: stats.model, generatedJson: json, generatedMd: md, stats, updatedAt: new Date() })
+            .where(eq(meetingSummaries.id, row!.id));
+          await tx.update(meetings).set({ summaryStatus: 'ready', updatedAt: new Date() }).where(eq(meetings.id, m.id));
+        });
       } catch (e) {
         const code = e instanceof SummaryError || e instanceof LlmError ? e.code : 'summary_failed';
         ctx.logger.warn({ meetingId: m.id, code }, 'summary generation failed');
-        await db.update(meetingSummaries).set({ status: 'failed', errorCode: code, updatedAt: new Date() }).where(eq(meetingSummaries.id, row!.id));
-        // Keep the previous usable summary visible on the dashboard.
-        const [prev] = await db.select({ id: meetingSummaries.id }).from(meetingSummaries).where(and(eq(meetingSummaries.meetingId, m.id), eq(meetingSummaries.status, 'ready'))).limit(1);
-        await db.update(meetings).set({ summaryStatus: prev ? 'ready' : 'failed', updatedAt: new Date() }).where(eq(meetings.id, m.id));
         await db.insert(usageEvents).values({ userId: m.userId, meetingId: m.id, kind: 'provider_error', quantity: 1, meta: { code, during: 'summary' } }).catch(() => {});
+        await db.transaction(async tx => {
+          await tx.update(meetingSummaries).set({ status: 'failed', errorCode: code, updatedAt: new Date() }).where(eq(meetingSummaries.id, row!.id));
+          // Keep the previous usable summary visible on the dashboard.
+          const [prev] = await tx.select({ id: meetingSummaries.id }).from(meetingSummaries).where(and(eq(meetingSummaries.meetingId, m.id), eq(meetingSummaries.status, 'ready'))).limit(1);
+          await tx.update(meetings).set({ summaryStatus: prev ? 'ready' : 'failed', updatedAt: new Date() }).where(eq(meetings.id, m.id));
+        });
       } finally {
         running.delete(m.id);
       }

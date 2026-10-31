@@ -9,7 +9,7 @@ export async function stageRuntime() {
   await fs.mkdir(path.join(target, 'asr'), { recursive: true });
   const files = ['localXasr.js', 'localXasrWorker.js', 'localXasrModel.js', 'xasrArchive.js', 'xasrManager.js', 'types.js'];
   for (const file of files) await fs.copyFile(path.join(root, 'server/dist/asr', file), path.join(target, 'asr', file));
-  await build({ entryPoints: ['audio-import-worker', 'speaker-models'].map(name => path.join(root, `desktop/src/${name}.ts`)), outdir: path.join(target, 'asr'), outExtension: { '.js': '.cjs' }, bundle: true, platform: 'node', format: 'cjs', target: 'node22' });
+  await build({ entryPoints: ['audio-import-worker', 'speaker-models', 'audio-decoder'].map(name => path.join(root, `desktop/src/${name}.ts`)), outdir: path.join(target, 'asr'), outExtension: { '.js': '.cjs' }, bundle: true, platform: 'node', format: 'cjs', target: 'node22' });
   const versions = new Map();
   async function find(name, from) {
     for (let dir = from;; dir = path.dirname(dir)) {

@@ -189,6 +189,7 @@ export function parseNotebook(value: unknown): Notebook {
           isImportant: bool(s.isImportant),
           source: choice(s.source, ['demo', 'manual', 'local']),
           updatedAt: str(s.updatedAt, 100),
+          ...(s.reviewReasons !== undefined ? { reviewReasons: list(s.reviewReasons, 3, v => choice(v, ['overlap', 'window-boundary', 'short-turn'] as const)) } : {}),
           ...(s.audio !== undefined ? { audio: (() => {
             const audio = object(s.audio);
             const recordingId = str(audio.recordingId, 36);

@@ -21,6 +21,8 @@ export interface RecordingInfo {
   recoverable: boolean;
   unavailable?: boolean;
 }
+export interface ImportTask { recordingId: string; durationMs: number; completedMs: number; segmentCount: number; complete: boolean; name?: string }
+export interface SelectedAudio { token: string; name: string; bytes: number; durationMs?: number }
 // Optional native preload contract. This UI build ships no native engine or model.
 export interface DesktopRuntime {
   version: 1;
@@ -32,15 +34,24 @@ export interface DesktopRuntime {
   preparePlayback?(value: { interviewId: string; recordingId: string; startMs: number; endMs: number }): Promise<{ token: string; url: string; durationMs: number }>;
   releasePlayback?(token: string): Promise<void>;
   getSpeakerStatus?(): Promise<{ ready: boolean }>;
+  getDecoderStatus?(): Promise<{ ready: boolean; supported: boolean }>;
+  installAudioDecoder?(): Promise<{ ready: boolean; supported: boolean }>;
+  importAudioDecoder?(): Promise<{ ready: boolean; supported: boolean }>;
+  cancelDecoderInstall?(): Promise<void>;
+  subscribeDecoderProgress?(listener: (progress: { downloadedBytes: number; totalBytes: number }) => void): () => void;
+  selectAudioFile?(): Promise<SelectedAudio | null>;
+  beginFileImport?(options: { token: string; interviewId: string; diarize: boolean; numSpeakers: number; consent: true }): Promise<string>;
+  listImportTasks?(value: { interviewId: string }): Promise<ImportTask[]>;
+  resumeAudioImport?(value: { interviewId: string; recordingId: string }): Promise<string>;
   installSpeakerModels?(): Promise<{ ready: boolean }>;
   importSpeakerModels?(): Promise<{ ready: boolean }>;
   cancelSpeakerInstall?(): Promise<void>;
-  beginAudioImport?(options: { interviewId: string; diarize: boolean; numSpeakers: number; consent: true }): Promise<string>;
+  beginAudioImport?(options: { interviewId: string; diarize: boolean; numSpeakers: number; consent: true; name?: string }): Promise<string>;
   appendAudioImport?(packet: { id: string; pcm: Uint8Array }): Promise<void>;
   finishAudioImport?(id: string): Promise<{ recordingId: string; durationMs: number; segments: Segment[] }>;
   cancelAudioImport?(id: string): Promise<void>;
   recoverAudioImport?(value: { interviewId: string; recordingId: string }): Promise<Segment[]>;
-  subscribeImportProgress?(callback: (event: { id: string; phase: string; percent: number }) => void): () => void;
+  subscribeImportProgress?(callback: (event: { id: string; phase: string; percent: number; completedMs?: number; totalMs?: number }) => void): () => void;
   getModelStatus(): Promise<ModelStatus>;
   subscribeModelStatus?(listener: (status: ModelStatus) => void): () => void;
   downloadModel?(onProgress: (status: ModelStatus) => void): Promise<void>;

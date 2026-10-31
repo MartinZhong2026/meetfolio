@@ -35,6 +35,7 @@ export function TranscriptSegment({
                 : 'Local engine'}
           </span>
         </div>
+        {!!s.reviewReasons?.length && <div className="dt-review-warning"><span>Listen & verify · {s.reviewReasons.map(r => r === 'overlap' ? 'overlapping voices' : r === 'short-turn' ? 'short turn' : 'phrase boundary').join(' · ')}</span><button className="dt-small-btn" onClick={() => onChange({ ...s, reviewReasons: [] })}>Mark reviewed</button></div>}
         {speakerEdit && <div className="dt-speaker-correction"><label className="dt-label">Speaker for segment {s.seq}<input aria-label={`Speaker for segment ${s.seq}`} value={speaker} maxLength={200} onChange={e => setSpeaker(e.target.value)}/></label><button className="dt-small-btn" onClick={() => { onChange({ ...s, speakerLabel: speaker.trim() || null }); setSpeakerEdit(false); }}>Save speaker</button><button className="dt-small-btn" onClick={() => setSpeakerEdit(false)}>Cancel speaker change</button></div>}
         {s.audio && <p className="dt-audio-source">Original audio · {fmtClock(s.audio.startMs)}–{fmtClock(s.audio.endMs)} <span> / {s.audio.recordingId.slice(0, 8)}</span></p>}
         {editing ? (

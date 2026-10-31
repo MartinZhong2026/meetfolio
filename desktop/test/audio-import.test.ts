@@ -4,6 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { AudioImports, validImport } from '../src/audio-import';
 import { listRecordings, recordingPath } from '../src/wav-recording';
+import { atomicJson } from '../src/import-checkpoint';
 const folders: string[] = [];
 afterEach(async () => { for (const folder of folders.splice(0)) await fs.rm(folder, { recursive: true, force: true }); });
 async function fixture() {
@@ -13,6 +14,18 @@ async function fixture() {
 }
 const options = { interviewId: 'test-interview', consent: true as const, diarize: false, numSpeakers: -1 };
 describe('durable local audio import boundary', () => {
+  it('resumes a validated checkpoint using its owned WAV and retains the same recording identity', async () => {
+    const { manager, root } = await fixture(); const id = await manager.begin(options);
+    await manager.append({ id, pcm: new Uint8Array(32000) });
+    await expect(manager.finish(id)).rejects.toThrow('model fixture');
+    await atomicJson(path.join(root, id, 'import-checkpoint.json'), { schema: 1, samples: 16000, completedSamples: 0, diarize: false, numSpeakers: -1, voices: [], segments: [] });
+    expect(await manager.status(options.interviewId)).toMatchObject([{ recordingId: id, complete: false, durationMs: 1000, completedMs: 0 }]);
+    await expect(manager.resume({ interviewId: 'other', recordingId: id })).rejects.toThrow('another interview');
+    expect(await manager.resume({ interviewId: options.interviewId, recordingId: id })).toBe(id);
+    await expect(manager.finish(id)).rejects.toThrow('model fixture');
+    expect(manager.busy).toBe(false); expect((await listRecordings(root))[0].bytes).toBe(32000);
+    expect(await manager.recover({ interviewId: options.interviewId, recordingId: id })).toEqual([]);
+  });
   it('requires consent, bounded speaker count and a valid interview identity', () => {
     expect(validImport(options)).toBe(true);
     for (const change of [{ consent: false }, { interviewId: '../unsafe' }, { numSpeakers: 0 }, { numSpeakers: 13 }, { numSpeakers: 1.5 }, { diarize: 'yes' }]) expect(validImport({ ...options, ...change })).toBe(false);

@@ -46,6 +46,7 @@ export interface Segment {
   updatedAt: string;
   /** Optional desktop WAV identity and sample-derived times within that capture file. */
   audio?: { recordingId: string; startMs: number; endMs: number };
+  reviewReasons?: Array<'overlap' | 'window-boundary' | 'short-turn'>;
 }
 
 export interface Gap {

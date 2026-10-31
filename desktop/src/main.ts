@@ -13,6 +13,7 @@ import { Diagnostics, asrDiagnostic } from './diagnostics.js';
 import { RecordingPlayback } from './playback.js';
 import { AudioImports, validImport } from './audio-import.js';
 import { SpeakerModels } from './speaker-models.js';
+import { AudioDecoder, probeAudioFile } from './audio-decoder.js';
 
 protocol.registerSchemesAsPrivileged([{ scheme: 'meetfolio', privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true, stream: true } }]);
 app.setName('Meetfolio');
@@ -27,11 +28,14 @@ let windowReady = false;
 let model: XAsrModelManager;
 let imports: AudioImports;
 let speakers: SpeakerModels;
+let decoder: AudioDecoder;
+let selectedAudio: { token: string; path: string } | null = null;
 let recording: RecordedSession | null = null;
 let lifecycle = 0;
 const recordingsRoot = path.join(app.getPath('userData'), 'recordings');
 const playback = new RecordingPlayback(recordingsRoot);
 let starting = false;
+let importStarting = false;
 let initializing: Promise<void> | null = null;
 let microphoneUntil = 0;
 let quitting = false;
@@ -50,11 +54,11 @@ function mappedStatus(status: Readonly<XAsrStatus>) {
     modelId: model.model, offline: true, engineLoaded: status.state === 'ready',
     downloadedBytes: status.downloadedBytes, totalBytes: status.totalBytes, detail: status.detail };
 }
-const argumentChannels: readonly string[] = [CHANNEL.import, CHANNEL.save, CHANNEL.stop, CHANNEL.start, CHANNEL.recoverRecording, CHANNEL.exportRecording, CHANNEL.preparePlayback, CHANNEL.releasePlayback, CHANNEL.importBegin, CHANNEL.importAppend, CHANNEL.importFinish, CHANNEL.importCancel, CHANNEL.importRecover];
+const argumentChannels: readonly string[] = [CHANNEL.import, CHANNEL.save, CHANNEL.stop, CHANNEL.start, CHANNEL.recoverRecording, CHANNEL.exportRecording, CHANNEL.preparePlayback, CHANNEL.releasePlayback, CHANNEL.importBegin, CHANNEL.importAppend, CHANNEL.importFinish, CHANNEL.importCancel, CHANNEL.importRecover, CHANNEL.importFile, CHANNEL.importResume, CHANNEL.importTasks];
 const recordingChannels: readonly string[] = [CHANNEL.start, CHANNEL.stop, CHANNEL.recordings, CHANNEL.recoverRecording, CHANNEL.exportRecording];
 async function ensureLoaded(): Promise<void> {
   if (initializing) { await initializing; return; }
-  if (!['installed', 'error'].includes(model.getStatus().state) || recording) return;
+  if (!['installed', 'error'].includes(model.getStatus().state) || recording || imports?.busy || importStarting) return;
   if (!initializing) initializing = model.initialize().finally(() => { initializing = null; });
   await initializing;
 }
@@ -63,7 +67,7 @@ function handle(channel: string, fn: (arg: unknown) => unknown) {
     try {
       trusted(event);
       if (!argumentChannels.includes(channel) && arg !== undefined) throw new Error('Unexpected IPC argument');
-      if ((imports?.busy || speakers?.busy) && [CHANNEL.start, CHANNEL.download, CHANNEL.import, CHANNEL.repair, CHANNEL.preparePlayback, CHANNEL.recoverRecording, CHANNEL.speakerInstall, CHANNEL.speakerImport].includes(channel as any)) throw new Error('Finish or cancel the current audio operation first');
+      if ((importStarting || imports?.busy || speakers?.busy || decoder?.busy) && [CHANNEL.start, CHANNEL.download, CHANNEL.import, CHANNEL.repair, CHANNEL.preparePlayback, CHANNEL.recoverRecording, CHANNEL.speakerInstall, CHANNEL.speakerImport, CHANNEL.selectAudio, CHANNEL.decoderInstall, CHANNEL.decoderImport].includes(channel as any)) throw new Error('Finish or cancel the current audio operation first');
     } catch (error) { diagnostics.record('ipc_error'); throw error; }
     try { return await fn(arg); }
     catch (error) {
@@ -87,9 +91,11 @@ async function boot(): Promise<void> {
   const { modelFiles, verifyModelCache } = await import(pathToFileURL(path.join(path.dirname(runtime), 'localXasrModel.js')).href);
   const { extractXAsrArchive } = await import(pathToFileURL(path.join(path.dirname(runtime), 'xasrArchive.js')).href);
   speakers = new SpeakerModels(model.root, extractXAsrArchive, ((input: string | URL | Request, init?: RequestInit) => net.fetch(input instanceof URL ? input.href : input, init)) as typeof fetch);
+  decoder = new AudioDecoder(path.join(app.getPath('userData'), 'decoders'), ((input: string | URL | Request, init?: RequestInit) => net.fetch(input instanceof URL ? input.href : input, init)) as typeof fetch,
+    (downloadedBytes, totalBytes) => emit({ type: 'decoder-progress', downloadedBytes, totalBytes }));
   imports = new AudioImports(recordingsRoot, path.join(runtimeRoot, 'asr/audio-import-worker.cjs'), runtimeRoot,
     async () => { await verifyModelCache(model.modelDir); return modelFiles(model.modelDir); }, () => speakers.files(),
-    (id, phase, percent) => emit({ type: 'import-progress', id, phase, percent }));
+    (id, phase, percent, detail) => emit({ type: 'import-progress', id, phase, percent, ...detail }), () => decoder.executable());
   model.on('status', status => { if (status.state === 'error') diagnostics.record('model_load'); emit({ type: 'model', status: mappedStatus(status) }); });
   protocol.handle('meetfolio', async request => {
     const url = new URL(request.url);
@@ -130,7 +136,7 @@ async function boot(): Promise<void> {
   });
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   window.webContents.on('will-navigate', (event, url) => { if (!isAppUrl(url)) event.preventDefault(); });
-  const interrupt = () => { lifecycle++; speakers.cancel(); void imports.cancel().catch(() => diagnostics.record('cleanup_failure')); void playback.release().catch(() => diagnostics.record('cleanup_failure')); recording?.abort('The window reloaded or closed unexpectedly. Review saved text and local recordings for gaps.'); };
+  const interrupt = () => { lifecycle++; selectedAudio = null; speakers.cancel(); decoder.cancel(); void imports.cancel().catch(() => diagnostics.record('cleanup_failure')); void playback.release().catch(() => diagnostics.record('cleanup_failure')); recording?.abort('The window reloaded or closed unexpectedly. Review saved text and local recordings for gaps.'); };
   window.webContents.on('render-process-gone', () => { diagnostics.record('child_exit'); interrupt(); });
   window.webContents.on('did-start-navigation', (_event, _url, _inPlace, mainFrame) => { if (mainFrame) interrupt(); });
   handle(CHANNEL.status, async () => { try { await ensureLoaded(); } catch {} return mappedStatus(model.getStatus()); });
@@ -162,6 +168,45 @@ async function boot(): Promise<void> {
     return 'granted';
   });
   handle(CHANNEL.recordings, () => listRecordings(recordingsRoot));
+  async function prepareImport(start: () => Promise<string>) {
+    if (recording || starting || quitting || importStarting || imports.busy || speakers.busy || decoder.busy) throw new Error('Stop other audio work first');
+    importStarting = true; const generation = lifecycle;
+    try { await playback.release(); await initializing; await model.suspend(); if (generation !== lifecycle || quitting) throw new Error('Import cancelled by window lifecycle'); return await start(); }
+    finally { importStarting = false; }
+  }
+  handle(CHANNEL.decoderStatus, async () => ({ ready: await decoder.ready(), supported: decoder.supported }));
+  handle(CHANNEL.decoderCancel, () => decoder.cancel());
+  handle(CHANNEL.decoderInstall, async () => { if (recording || starting || quitting) throw new Error('Stop audio work first'); await decoder.install(); return { ready: await decoder.ready(), supported: decoder.supported }; });
+  handle(CHANNEL.decoderImport, async () => {
+    if (recording || starting || quitting) throw new Error('Stop audio work first');
+    const selected = await dialog.showOpenDialog(window!, { title: 'Import verified FFmpeg archive (GPL)', properties: ['openFile'], filters: [{ name: 'Pinned decoder ZIP', extensions: ['zip'] }] });
+    if (!selected.canceled && selected.filePaths.length === 1) await decoder.install(selected.filePaths[0]);
+    return { ready: await decoder.ready(), supported: decoder.supported };
+  });
+  handle(CHANNEL.selectAudio, async () => {
+    if (recording || starting || quitting) throw new Error('Stop capture first');
+    const generation = lifecycle;
+    const selected = await dialog.showOpenDialog(window!, { title: 'Choose local audio recording', properties: ['openFile'], filters: [{ name: 'Audio recordings', extensions: ['wav','mp3','m4a'] }] });
+    if (selected.canceled || selected.filePaths.length !== 1 || generation !== lifecycle) return null;
+    const source = selected.filePaths[0]; const stat = await fs.lstat(source);
+    if (!stat.isFile() || stat.isSymbolicLink() || !/\.(wav|mp3|m4a)$/i.test(source) || !stat.size || stat.size > 2 * 1024 ** 3) throw new Error('Choose a WAV, MP3 or M4A up to 2 GiB');
+    const durationMs = await probeAudioFile(await decoder.executable(), source);
+    if (generation !== lifecycle || quitting) return null;
+    const disk = await fs.statfs(app.getPath('userData')).catch(() => null);
+    if (disk && disk.bavail * disk.bsize < durationMs * 32 + 16 * 1024 * 1024) throw new Error('Not enough local disk space for the WAV copy. Free space or choose a shorter recording.');
+    selectedAudio = { token: randomUUID(), path: source };
+    return { token: selectedAudio.token, name: path.basename(source), bytes: stat.size, durationMs };
+  });
+  handle(CHANNEL.importFile, async value => {
+    if (!validImport(value) || recording || starting || quitting || imports.busy || speakers.busy || decoder.busy || !selectedAudio || (value as any).token !== selectedAudio.token) throw new Error('Select a recording and stop other audio work first');
+    const source = selectedAudio.path; selectedAudio = null;
+    return prepareImport(() => imports.beginFile(value, source));
+  });
+  handle(CHANNEL.importTasks, value => { if (!validStart(value)) throw new Error('Invalid interview'); return imports.status(value.interviewId); });
+  handle(CHANNEL.importResume, async value => {
+    if (recording || starting || quitting || imports.busy || speakers.busy || decoder.busy) throw new Error('Stop other audio work first');
+    return prepareImport(() => imports.resume(value));
+  });
   handle(CHANNEL.speakerStatus, async () => ({ ready: await speakers.ready() }));
   handle(CHANNEL.speakerCancel, () => speakers.cancel());
   handle(CHANNEL.speakerInstall, async () => {
@@ -176,12 +221,11 @@ async function boot(): Promise<void> {
   });
   handle(CHANNEL.importBegin, async options => {
     if (!validImport(options) || recording || starting || quitting || speakers.busy || initializing || ['loading', 'downloading'].includes(model.getStatus().state)) throw new Error('Stop other audio work before importing');
-    await playback.release();
-    return imports.begin(options);
+    return prepareImport(() => imports.begin(options));
   });
   handle(CHANNEL.importAppend, value => imports.append(value));
-  handle(CHANNEL.importFinish, value => imports.finish(value));
-  handle(CHANNEL.importCancel, value => imports.cancel(value));
+  handle(CHANNEL.importFinish, async value => { try { return await imports.finish(value); } finally { if (!quitting) await ensureLoaded().catch(() => {}); } });
+  handle(CHANNEL.importCancel, async value => { await imports.cancel(value); if (!quitting) await ensureLoaded().catch(() => {}); });
   handle(CHANNEL.importRecover, value => imports.recover(value));
   handle(CHANNEL.preparePlayback, value => {
     if (recording || starting || quitting) throw new Error('Stop capture before playback');
@@ -286,6 +330,7 @@ else {
     lifecycle++;
     void (async () => {
       speakers.cancel();
+      decoder.cancel();
       await imports.cancel().catch(() => diagnostics.record('cleanup_failure'));
       await playback.release().catch(() => diagnostics.record('cleanup_failure'));
       const saved = window && !window.isDestroyed() ? await new Promise<boolean>(resolve => {

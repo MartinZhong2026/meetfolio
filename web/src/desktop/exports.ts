@@ -11,6 +11,7 @@ export function exportText(i: Interview, markdown = false) {
         : 'Local research record — Review manually; ASR and manual segments are distinguished.',
       `Participant: ${i.participant}`,
       'Audio files are not included in this document. Export local WAV recordings separately; file times below are relative to each capture.',
+      ...i.segments.filter(s => s.reviewReasons?.length).map(s => `Needs listening review: segment ${s.seq} (${s.reviewReasons!.join(', ')})`),
       h('Transcript and edits'),
       ...i.segments.map(
         (s) =>
