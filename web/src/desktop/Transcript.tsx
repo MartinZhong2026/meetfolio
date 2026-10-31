@@ -15,6 +15,8 @@ export function TranscriptSegment({
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
+  const [speakerEdit, setSpeakerEdit] = useState(false);
+  const [speaker, setSpeaker] = useState('');
   return (
     <article
       id={`${prefix}seg-${s.seq}`}
@@ -24,7 +26,7 @@ export function TranscriptSegment({
       <time>{fmtClock(s.startMs)}</time>
       <div className="dt-bubble">
         <div className="dt-speaker">
-          {s.speakerLabel || 'Unlabeled speaker'}{' '}
+          <button className="dt-speaker-name" aria-label={`${s.speakerLabel || 'Unlabeled speaker'} · Correct speaker for segment ${s.seq}`} onClick={() => { setSpeaker(s.speakerLabel || ''); setSpeakerEdit(v => !v); }}>{s.speakerLabel || 'Unlabeled speaker'}</button>{' '}
           <span className="dt-source-label">
             {s.source === 'demo'
               ? 'DEMO'
@@ -33,7 +35,8 @@ export function TranscriptSegment({
                 : 'Local engine'}
           </span>
         </div>
-        {s.audio && <p className="dt-fine">WAV {s.audio.recordingId.slice(0, 8)} · file time {fmtClock(s.audio.startMs)}–{fmtClock(s.audio.endMs)}</p>}
+        {speakerEdit && <div className="dt-speaker-correction"><label className="dt-label">Speaker for segment {s.seq}<input aria-label={`Speaker for segment ${s.seq}`} value={speaker} maxLength={200} onChange={e => setSpeaker(e.target.value)}/></label><button className="dt-small-btn" onClick={() => { onChange({ ...s, speakerLabel: speaker.trim() || null }); setSpeakerEdit(false); }}>Save speaker</button><button className="dt-small-btn" onClick={() => setSpeakerEdit(false)}>Cancel speaker change</button></div>}
+        {s.audio && <p className="dt-audio-source">Original audio · {fmtClock(s.audio.startMs)}–{fmtClock(s.audio.endMs)} <span> / {s.audio.recordingId.slice(0, 8)}</span></p>}
         {editing ? (
           <>
             <label className="dt-label">

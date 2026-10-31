@@ -172,6 +172,11 @@ export class WavRecording {
       } catch (error) { this.ioFailed = true; this.fail(error); }
     }).finally(() => { this.pending -= bytes.length; });
   }
+  /** File imports await disk writes to keep the existing live-capture queue bounded. */
+  async append(pcm: Uint8Array): Promise<void> {
+    this.enqueue(pcm); await this.queue;
+    if (this.failure) throw this.failure;
+  }
   finish(status: 'complete' | 'interrupted' = 'complete'): Promise<RecordingInfo> {
     if (this.finishing) return this.finishing;
     this.closed = true;

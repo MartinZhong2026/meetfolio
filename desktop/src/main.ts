@@ -11,6 +11,8 @@ import { listRecordings, recoverRecording, recordingPath } from './wav-recording
 import { CHANNEL, isAppUrl, validAudio, validSession, validExport, validStart, validStop } from './policy.js';
 import { Diagnostics, asrDiagnostic } from './diagnostics.js';
 import { RecordingPlayback } from './playback.js';
+import { AudioImports, validImport } from './audio-import.js';
+import { SpeakerModels } from './speaker-models.js';
 
 protocol.registerSchemesAsPrivileged([{ scheme: 'meetfolio', privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true, stream: true } }]);
 app.setName('Meetfolio');
@@ -23,6 +25,8 @@ const gotLock = app.requestSingleInstanceLock();
 let window: BrowserWindow | null = null;
 let windowReady = false;
 let model: XAsrModelManager;
+let imports: AudioImports;
+let speakers: SpeakerModels;
 let recording: RecordedSession | null = null;
 let lifecycle = 0;
 const recordingsRoot = path.join(app.getPath('userData'), 'recordings');
@@ -46,7 +50,7 @@ function mappedStatus(status: Readonly<XAsrStatus>) {
     modelId: model.model, offline: true, engineLoaded: status.state === 'ready',
     downloadedBytes: status.downloadedBytes, totalBytes: status.totalBytes, detail: status.detail };
 }
-const argumentChannels: readonly string[] = [CHANNEL.import, CHANNEL.save, CHANNEL.stop, CHANNEL.start, CHANNEL.recoverRecording, CHANNEL.exportRecording, CHANNEL.preparePlayback, CHANNEL.releasePlayback];
+const argumentChannels: readonly string[] = [CHANNEL.import, CHANNEL.save, CHANNEL.stop, CHANNEL.start, CHANNEL.recoverRecording, CHANNEL.exportRecording, CHANNEL.preparePlayback, CHANNEL.releasePlayback, CHANNEL.importBegin, CHANNEL.importAppend, CHANNEL.importFinish, CHANNEL.importCancel, CHANNEL.importRecover];
 const recordingChannels: readonly string[] = [CHANNEL.start, CHANNEL.stop, CHANNEL.recordings, CHANNEL.recoverRecording, CHANNEL.exportRecording];
 async function ensureLoaded(): Promise<void> {
   if (initializing) { await initializing; return; }
@@ -59,6 +63,7 @@ function handle(channel: string, fn: (arg: unknown) => unknown) {
     try {
       trusted(event);
       if (!argumentChannels.includes(channel) && arg !== undefined) throw new Error('Unexpected IPC argument');
+      if ((imports?.busy || speakers?.busy) && [CHANNEL.start, CHANNEL.download, CHANNEL.import, CHANNEL.repair, CHANNEL.preparePlayback, CHANNEL.recoverRecording, CHANNEL.speakerInstall, CHANNEL.speakerImport].includes(channel as any)) throw new Error('Finish or cancel the current audio operation first');
     } catch (error) { diagnostics.record('ipc_error'); throw error; }
     try { return await fn(arg); }
     catch (error) {
@@ -78,6 +83,13 @@ async function boot(): Promise<void> {
   // Keep the verified engine and all adjacent native modules on the real filesystem, outside ASAR.
   const { XAsrModelManager } = await import(pathToFileURL(runtime).href);
   model = new XAsrModelManager({ root: path.join(app.getPath('userData'), 'models'), fetch: net.fetch.bind(net) });
+  const runtimeRoot = app.isPackaged ? path.join(root, 'xasr') : path.join(root, 'work/desktop-runtime/xasr');
+  const { modelFiles, verifyModelCache } = await import(pathToFileURL(path.join(path.dirname(runtime), 'localXasrModel.js')).href);
+  const { extractXAsrArchive } = await import(pathToFileURL(path.join(path.dirname(runtime), 'xasrArchive.js')).href);
+  speakers = new SpeakerModels(model.root, extractXAsrArchive, ((input: string | URL | Request, init?: RequestInit) => net.fetch(input instanceof URL ? input.href : input, init)) as typeof fetch);
+  imports = new AudioImports(recordingsRoot, path.join(runtimeRoot, 'asr/audio-import-worker.cjs'), runtimeRoot,
+    async () => { await verifyModelCache(model.modelDir); return modelFiles(model.modelDir); }, () => speakers.files(),
+    (id, phase, percent) => emit({ type: 'import-progress', id, phase, percent }));
   model.on('status', status => { if (status.state === 'error') diagnostics.record('model_load'); emit({ type: 'model', status: mappedStatus(status) }); });
   protocol.handle('meetfolio', async request => {
     const url = new URL(request.url);
@@ -118,7 +130,7 @@ async function boot(): Promise<void> {
   });
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   window.webContents.on('will-navigate', (event, url) => { if (!isAppUrl(url)) event.preventDefault(); });
-  const interrupt = () => { lifecycle++; void playback.release().catch(() => diagnostics.record('cleanup_failure')); recording?.abort('The window reloaded or closed unexpectedly. Review saved text and local recordings for gaps.'); };
+  const interrupt = () => { lifecycle++; speakers.cancel(); void imports.cancel().catch(() => diagnostics.record('cleanup_failure')); void playback.release().catch(() => diagnostics.record('cleanup_failure')); recording?.abort('The window reloaded or closed unexpectedly. Review saved text and local recordings for gaps.'); };
   window.webContents.on('render-process-gone', () => { diagnostics.record('child_exit'); interrupt(); });
   window.webContents.on('did-start-navigation', (_event, _url, _inPlace, mainFrame) => { if (mainFrame) interrupt(); });
   handle(CHANNEL.status, async () => { try { await ensureLoaded(); } catch {} return mappedStatus(model.getStatus()); });
@@ -150,6 +162,27 @@ async function boot(): Promise<void> {
     return 'granted';
   });
   handle(CHANNEL.recordings, () => listRecordings(recordingsRoot));
+  handle(CHANNEL.speakerStatus, async () => ({ ready: await speakers.ready() }));
+  handle(CHANNEL.speakerCancel, () => speakers.cancel());
+  handle(CHANNEL.speakerInstall, async () => {
+    if (recording || starting || quitting) throw new Error('Stop capture before installing speaker models');
+    await speakers.install(); return { ready: await speakers.ready() };
+  });
+  handle(CHANNEL.speakerImport, async () => {
+    if (recording || starting || quitting) throw new Error('Stop capture before installing speaker models');
+    const selected = await dialog.showOpenDialog(window!, { title: 'Import verified speaker model folder', properties: ['openDirectory'] });
+    if (!selected.canceled && selected.filePaths.length === 1) await speakers.install(selected.filePaths[0]);
+    return { ready: await speakers.ready() };
+  });
+  handle(CHANNEL.importBegin, async options => {
+    if (!validImport(options) || recording || starting || quitting || speakers.busy || initializing || ['loading', 'downloading'].includes(model.getStatus().state)) throw new Error('Stop other audio work before importing');
+    await playback.release();
+    return imports.begin(options);
+  });
+  handle(CHANNEL.importAppend, value => imports.append(value));
+  handle(CHANNEL.importFinish, value => imports.finish(value));
+  handle(CHANNEL.importCancel, value => imports.cancel(value));
+  handle(CHANNEL.importRecover, value => imports.recover(value));
   handle(CHANNEL.preparePlayback, value => {
     if (recording || starting || quitting) throw new Error('Stop capture before playback');
     return playback.prepare(value);
@@ -252,6 +285,8 @@ else {
     quitting = true;
     lifecycle++;
     void (async () => {
+      speakers.cancel();
+      await imports.cancel().catch(() => diagnostics.record('cleanup_failure'));
       await playback.release().catch(() => diagnostics.record('cleanup_failure'));
       const saved = window && !window.isDestroyed() ? await new Promise<boolean>(resolve => {
         const id = randomUUID();

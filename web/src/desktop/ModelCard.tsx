@@ -33,7 +33,7 @@ export function ModelCard({ runtime: r }: { runtime: ReturnType<typeof useLocalR
       </div>
       {r.runtimeError && <p role="alert" className="dt-alert">{r.runtimeError}</p>}
       <div className="dt-feature"><b>Desktop Lite · No AI summaries</b><p>Local X-ASR, interview guides, researcher notes, human review and TXT/Markdown/DOCX exports. No account or API key required.</p></div>
-      <p className="dt-fine">Stored notebook text is not encrypted or synchronized. Export backups regularly. WAV recording, playback and PDF/DOCX extraction are not yet restored in this reconstruction.</p>
+      <p className="dt-fine">Notebook text and audio are stored locally and are not encrypted or synchronized. Export JSON and WAV files separately. PDF/DOCX reference extraction and combined audio backup remain pending.</p>
     </section>
   );
 }
