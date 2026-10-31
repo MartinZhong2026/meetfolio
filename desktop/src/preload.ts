@@ -28,6 +28,19 @@ const runtime: DesktopRuntime = {
   exportRecording: id => invoke(CHANNEL.exportRecording, id),
   preparePlayback: value => invoke(CHANNEL.preparePlayback, value),
   releasePlayback: token => invoke(CHANNEL.releasePlayback, token),
+  getSpeakerStatus: () => invoke(CHANNEL.speakerStatus),
+  installSpeakerModels: () => invoke(CHANNEL.speakerInstall),
+  importSpeakerModels: () => invoke(CHANNEL.speakerImport),
+  cancelSpeakerInstall: () => invoke(CHANNEL.speakerCancel),
+  beginAudioImport: options => invoke(CHANNEL.importBegin, options),
+  appendAudioImport: packet => invoke(CHANNEL.importAppend, packet),
+  finishAudioImport: id => invoke(CHANNEL.importFinish, id),
+  cancelAudioImport: id => invoke(CHANNEL.importCancel, id),
+  recoverAudioImport: value => invoke(CHANNEL.importRecover, value),
+  subscribeImportProgress: callback => {
+    const listener = (event: any) => { if (event?.type === 'import-progress') callback(event); };
+    listeners.add(listener); return () => { listeners.delete(listener); };
+  },
   onBeforeClose: handler => { flushNotebook = handler; return () => { if (flushNotebook === handler) flushNotebook = null; }; },
   getModelStatus: () => invoke(CHANNEL.status),
   subscribeModelStatus: callback => {

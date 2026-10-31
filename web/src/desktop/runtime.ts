@@ -31,6 +31,16 @@ export interface DesktopRuntime {
   exportRecording?(id: string): Promise<boolean>;
   preparePlayback?(value: { interviewId: string; recordingId: string; startMs: number; endMs: number }): Promise<{ token: string; url: string; durationMs: number }>;
   releasePlayback?(token: string): Promise<void>;
+  getSpeakerStatus?(): Promise<{ ready: boolean }>;
+  installSpeakerModels?(): Promise<{ ready: boolean }>;
+  importSpeakerModels?(): Promise<{ ready: boolean }>;
+  cancelSpeakerInstall?(): Promise<void>;
+  beginAudioImport?(options: { interviewId: string; diarize: boolean; numSpeakers: number; consent: true }): Promise<string>;
+  appendAudioImport?(packet: { id: string; pcm: Uint8Array }): Promise<void>;
+  finishAudioImport?(id: string): Promise<{ recordingId: string; durationMs: number; segments: Segment[] }>;
+  cancelAudioImport?(id: string): Promise<void>;
+  recoverAudioImport?(value: { interviewId: string; recordingId: string }): Promise<Segment[]>;
+  subscribeImportProgress?(callback: (event: { id: string; phase: string; percent: number }) => void): () => void;
   getModelStatus(): Promise<ModelStatus>;
   subscribeModelStatus?(listener: (status: ModelStatus) => void): () => void;
   downloadModel?(onProgress: (status: ModelStatus) => void): Promise<void>;

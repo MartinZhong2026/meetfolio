@@ -7,6 +7,8 @@ export const CHANNEL = {
   diagnostic: 'meetfolio:diagnostic',
   recordings: 'meetfolio:recordings', recoverRecording: 'meetfolio:recording-recover', exportRecording: 'meetfolio:recording-export',
   preparePlayback: 'meetfolio:playback-prepare', releasePlayback: 'meetfolio:playback-release',
+  importBegin: 'meetfolio:import-begin', importAppend: 'meetfolio:import-append', importFinish: 'meetfolio:import-finish', importCancel: 'meetfolio:import-cancel', importRecover: 'meetfolio:import-recover',
+  speakerStatus: 'meetfolio:speaker-status', speakerInstall: 'meetfolio:speaker-install', speakerImport: 'meetfolio:speaker-import', speakerCancel: 'meetfolio:speaker-cancel',
 } as const;
 export function isAppUrl(value: string): boolean {
   try { const url = new URL(value); return url.protocol === 'meetfolio:' && url.hostname === 'app' && !url.username && !url.password && !url.port; }

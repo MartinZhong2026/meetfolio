@@ -7,7 +7,7 @@ module.exports = async context => {
     ? ['sherpa-onnx.node', 'onnxruntime.dll', 'onnxruntime_providers_shared.dll', 'sherpa-onnx-c-api.dll', 'sherpa-onnx-cxx-api.dll']
     : ['sherpa-onnx.node', 'libonnxruntime.so', 'libsherpa-onnx-c-api.so', 'libsherpa-onnx-cxx-api.so'];
   for (const file of [
-    'branding/meetfolio.ico', 'branding/meetfolio.png', 'app.asar', 'ui/index.html', 'ui/pcm-worklet.js', 'xasr/asr/xasrManager.js', 'xasr/asr/localXasrWorker.js',
+    'branding/meetfolio.ico', 'branding/meetfolio.png', 'app.asar', 'ui/index.html', 'ui/pcm-worklet.js', 'xasr/asr/xasrManager.js', 'xasr/asr/localXasrWorker.js', 'xasr/asr/audio-import-worker.cjs',
     'xasr/node_modules/proper-lockfile/index.js', 'xasr/node_modules/tar-stream/index.js',
     'xasr/node_modules/unbzip2-stream/index.js', 'xasr/node_modules/sherpa-onnx-node/sherpa-onnx.js',
     ...required.map(file => `xasr/node_modules/${native}/${file}`),
