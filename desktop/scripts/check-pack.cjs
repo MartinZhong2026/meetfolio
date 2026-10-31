@@ -16,4 +16,5 @@ module.exports = async context => {
   const version = JSON.parse(fs.readFileSync(path.join(resources, 'xasr/node_modules', native, 'package.json'), 'utf8')).version;
   if (version !== '1.13.8') throw new Error('Packaged native version mismatch');
   if (mac && !fs.statSync(path.join(resources,'xasr/decoder/meetfolio-audio-decoder')).isFile()) throw new Error('Bundled system decoder missing');
+  if (mac) await require('./sign-mac-preview.cjs')(context);
 };

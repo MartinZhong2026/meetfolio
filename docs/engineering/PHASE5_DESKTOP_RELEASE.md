@@ -31,6 +31,8 @@ Windows binaries are explicitly unsigned. Mac apps use ad-hoc signatures and a J
 
 Do not disable Gatekeeper, quarantine, SIP, antivirus, UAC or other system/organization protections to make these tests pass. Runner startup without browser quarantine is not downloaded-app Gatekeeper acceptance. Developer ID signing/notarization is a separate credentialed release step; this phase ships only review candidates and records the limitation.
 
+PR builds skip electron-builder's certificate signing. The preview-only `afterPack` hook therefore seals nested Mach-O code and the App with a fixed ad-hoc identity using the locked Electron signing library, then verifies the complete bundle before DMG/ZIP creation. It asserts preview identity/version and output boundaries, does not discover certificates or embed provisioning profiles, and does not enable `CSC_FOR_PULL_REQUEST`. The copied DMG and extracted ZIP signatures are independently checked again.
+
 ## Verification and distribution gates
 
 The existing five CI jobs remain. Two native Mac jobs are added to the same PR workflow, with independent matrix failure reporting. Triggers remain unrestricted `pull_request` and main-only `push`, so one feature milestone push followed by one Draft PR creation should cause one workflow with seven jobs. No release publishing workflow or write-token permissions are added.

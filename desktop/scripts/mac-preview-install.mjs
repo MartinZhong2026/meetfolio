@@ -18,6 +18,7 @@ if(values.mode==='install'){
   execFileSync('/usr/bin/hdiutil',['attach',dmg,'-readonly','-nobrowse','-mountpoint',mount],{stdio:'inherit'});
   try{execFileSync('/usr/bin/ditto',[path.join(mount,'MeetfolioPreview.app'),appPath],{stdio:'inherit'});}finally{execFileSync('/usr/bin/hdiutil',['detach',mount],{stdio:'inherit'});}
   execFileSync('/usr/bin/codesign',['--verify','--deep','--strict',appPath],{stdio:'inherit'});
+  const signature=spawnSync('/usr/bin/codesign',['--display','--verbose=4',appPath],{encoding:'utf8'});assert.equal(signature.status,0);assert.match(signature.stderr,/Signature=adhoc/);assert.doesNotMatch(signature.stderr,/flags=.*\(.*runtime/);
   const executable=path.join(appPath,'Contents/MacOS/MeetfolioPreview');
   const arch=execFileSync('/usr/bin/lipo',['-archs',executable],{encoding:'utf8'}).trim();assert.equal(arch,process.arch==='x64'?'x86_64':'arm64');
   const info=JSON.parse(execFileSync('/usr/bin/plutil',['-convert','json','-o','-',path.join(appPath,'Contents/Info.plist')],{encoding:'utf8'}));

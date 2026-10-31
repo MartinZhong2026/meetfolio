@@ -79,13 +79,14 @@ describe('durable PCM WAV recording (real temporary filesystem)', () => {
     const part = path.join(root, id, 'capture.part'); const original = await fs.readFile(part);
     const info = await recoverRecording(root, id);
     expect(info).toMatchObject({ bytes: 160000, durationMs: 5000, status: 'interrupted' });
-    expect(await fs.readFile(part)).toEqual(original);
+    // Native byte equality preserves the exact assertion without Vitest expanding 160k entries.
+    expect((await fs.readFile(part)).equals(original)).toBe(true);
     const wav = await fs.readFile(recordingPath(root, id));
-    expect(wav.subarray(44)).toEqual(original.subarray(44));
+    expect(wav.subarray(44).equals(original.subarray(44))).toBe(true);
     expect(wav.readUInt32LE(40)).toBe(160000);
     expect(await listRecordings(root, 'interview')).toMatchObject([{ status: 'interrupted', bytes: 160000 }]);
     expect(await recoverRecording(root, id)).toEqual(info);
-    expect(await fs.readFile(recordingPath(root, id))).toEqual(wav);
+    expect((await fs.readFile(recordingPath(root, id))).equals(wav)).toBe(true);
   });
   it('recovers only complete PCM samples after abrupt termination and rejects foreign/corrupt files', async () => {
     const { root, id } = await fixture();
