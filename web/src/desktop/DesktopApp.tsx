@@ -149,6 +149,20 @@ export default function DesktopApp({
         : 'A new local interview was created.',
     );
   }
+  function openImport() {
+    if (busy || !i) return;
+    if (i.synthetic) {
+      if (book.interviews.length >= 100) {
+        setMessage('The interview limit is reached. Import audio into a non-demo interview.');
+        return;
+      }
+      const next = newInterview();
+      store.update(current => ({ ...current, activeId: next.id, interviews: [next, ...current.interviews] }));
+      setMessage('A separate local interview was created for audio import. The fictional demo is preserved.');
+    }
+    setSettings(false);
+    setImportOpen(true);
+  }
   async function finish() {
     if (!i) return;
     if (i.synthetic) save({ recording: 'ended', stage: 'review' });
@@ -232,7 +246,7 @@ export default function DesktopApp({
         <button
           className={`dt-nav${importOpen && !settings ? ' active' : ''}`}
           disabled={busy}
-          onClick={() => { setSettings(false); setImportOpen(true); }}
+          onClick={openImport}
         >
           <AudioLines size={18} />
           Import audio
@@ -464,7 +478,7 @@ export default function DesktopApp({
               }}/>
             </div>
           ) : i.stage === 'prepare' ? (
-            <><section className="dt-source-choice" aria-label="Choose conversation source"><div><span className="dt-eyebrow">YOUR NEXT CONVERSATION</span><h2>Listen closely. Keep the context.</h2><p>Prepare your research, capture a live conversation, or work from an existing recording.</p></div><button className="dt-btn" disabled={busy} onClick={() => setImportOpen(true)}><AudioLines size={17}/>Import recording</button></section><Preparation
+            <><section className="dt-source-choice" aria-label="Choose conversation source"><div><span className="dt-eyebrow">YOUR NEXT CONVERSATION</span><h2>Listen closely. Keep the context.</h2><p>Prepare your research, capture a live conversation, or work from an existing recording.</p></div><button className="dt-btn" disabled={busy} onClick={openImport}><AudioLines size={17}/>Import recording</button></section><Preparation
               i={i}
               save={save}
               setMessage={setMessage}

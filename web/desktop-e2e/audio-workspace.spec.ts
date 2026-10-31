@@ -41,3 +41,15 @@ test('audio import presents honest local requirements, rejects invalid files and
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
   await page.screenshot({ path: info.outputPath('audio-import.png'), fullPage: false });
 });
+test('audio import from a fictional demo creates a separate real interview and preserves the demo', async ({ page }) => {
+  await page.goto('/'); await page.getByRole('button', { name: 'Load fictional demo', exact: true }).click();
+  await page.getByRole('button', { name: 'Import audio', exact: true }).click();
+  await expect(page.getByRole('region', { name: 'Import audio recording' })).toBeVisible();
+  await expect(page.getByText('New research interview', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: /DEMO · Family caregiver interview/ })).toBeVisible();
+  await expect(page.getByTestId('desktop-save-status')).toHaveText('Saved locally');
+  await page.reload();
+  await expect(page.getByLabel('Interview topic', { exact: true })).toHaveValue('');
+  await page.getByRole('button', { name: /DEMO · Family caregiver interview/ }).click();
+  await expect(page.getByLabel('Interview topic', { exact: true })).toHaveValue('Family caregiver interview');
+});
