@@ -36,6 +36,8 @@ Phase 3A tracks the [native architecture audit](docs/engineering/PHASE3A_AUDIT.m
 
 ## Getting started / re-upload
 
+[Phase 4 audio import and workspace](docs/engineering/PHASE4_AUDIO_WORKSPACE.md) adds native WAV/MP3/M4A import, optional offline speaker separation, speaker correction and a searchable review desk with linked playback. Input limits are 64 MiB / 20 minutes, mono or stereo. Install X-ASR and optionally the verified speaker models once; audio processing then stays local. Completed import text can be recovered from Local storage without replacing existing edits. Accuracy and physical-device acceptance remain to be measured; JSON still excludes audio. See the Phase 4 contract for model provenance, validation and remaining limits.
+
 Read [UPLOAD-TO-GITHUB-WINDOWS.md](UPLOAD-TO-GITHUB-WINDOWS.md). Import **the extracted directory** into GitHub Desktop instead of uploading this ZIP as a single file. Publish **private first**, inspect files and licenses, then choose whether to make the repository public.
 
 ## Recovery files
