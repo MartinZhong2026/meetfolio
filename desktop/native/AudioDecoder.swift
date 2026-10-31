@@ -35,16 +35,23 @@ do {
             var inputError: Error?
             var total: Int64 = 0
             while true {
+                output.frameLength = 0
                 var error: NSError?
                 let status = converter.convert(to: output, error: &error) { requested, state in
                     if ended { state.pointee = .endOfStream; return nil }
                     do {
-                        try file.read(into: input, frameCount: min(AVAudioFrameCount(requested), input.frameCapacity))
+                        let remaining = file.length - file.framePosition
+                        if remaining <= 0 { ended = true; state.pointee = .endOfStream; return nil }
+                        input.frameLength = 0
+                        let count = min(min(AVAudioFrameCount(requested), input.frameCapacity), AVAudioFrameCount(min(remaining, Int64(input.frameCapacity))))
+                        try file.read(into: input, frameCount: count)
                         if input.frameLength == 0 { ended = true; state.pointee = .endOfStream; return nil }
                         state.pointee = .haveData; return input
                     } catch { inputError = error; ended = true; state.pointee = .endOfStream; return nil }
                 }
-                if inputError != nil || error != nil || status == .error { throw DecodeError.conversion }
+                if let inputError = inputError { throw inputError }
+                if let error = error { throw error }
+                if status == .error { throw DecodeError.conversion }
                 if output.frameLength > 0 {
                     total += Int64(output.frameLength)
                     guard total <= maxFrames, let samples = output.int16ChannelData else { throw DecodeError.duration }
@@ -58,6 +65,8 @@ do {
     }
 } catch {
     // Never echo the source path or recording metadata into diagnostics.
-    FileHandle.standardError.write(Data("Local audio conversion failed\n".utf8))
+    let failure = error as NSError
+    let domain = failure.domain.filter { $0.isLetter || $0.isNumber || $0 == "." || $0 == "_" || $0 == "-" }
+    FileHandle.standardError.write(Data("Local audio conversion failed (\(domain):\(failure.code))\n".utf8))
     exit(1)
 }

@@ -27,13 +27,14 @@ if(values.mode==='install'){
   }finally{await app.close();}
   const sentinel='Phase 5 uninstall retention fixture; no interview data.';await fs.writeFile(path.join(profile,'phase5-retention.txt'),sentinel);
   const uninstaller=(await fs.readdir(target)).filter(n=>/^Uninstall .*\.exe$/.test(n));assert.equal(uninstaller.length,1);
-  await fs.writeFile(state,JSON.stringify({executable,target,profile,uninstaller:path.join(target,uninstaller[0]),sentinel,install:'Passed',normalVisibleLaunch:'Passed',version:'0.2.0-preview.1'},null,2));
+  const signatures=JSON.parse((await run('powershell.exe',['-NoProfile','-NonInteractive','-File',path.resolve('desktop/scripts/preview-signatures.ps1'),'-Installer',path.resolve(values.installer),'-Executable',executable,'-Uninstaller',path.join(target,uninstaller[0])],{windowsHide:true})).stdout);
+  await fs.writeFile(state,JSON.stringify({executable,target,profile,uninstaller:path.join(target,uninstaller[0]),sentinel,signatures,install:'Passed',normalVisibleLaunch:'Passed',version:'0.2.0-preview.1'},null,2));
   console.log('Real per-user NSIS installation and normal visible preview startup passed; original Meetfolio identity/profile untouched');
 }else{
   const s=JSON.parse(await fs.readFile(state,'utf8'));assert.equal(s.target,target);assert.equal(s.profile,profile);assert(s.uninstaller.startsWith(target+path.sep));
   await run(s.uninstaller,['/S'],{windowsHide:true,timeout:180000});
   await expect.poll(async()=>fs.access(s.executable).then(()=>true,()=>false),{timeout:30000}).toBe(false);
   assert.equal(await previewRegistration(),0);assert.equal(await fs.readFile(path.join(profile,'phase5-retention.txt'),'utf8'),s.sentinel);
-  await fs.writeFile(path.join(root,'installation-status.json'),JSON.stringify({platform:'win32',arch:'x64',installer:'Passed',normalVisibleLaunch:'Passed',uninstall:'Passed',previewUserDataRetained:true,originalMeetfolioProfileTouched:false,physicalMicrophone:'Not verified',signed:false},null,2));
+  await fs.writeFile(path.join(root,'installation-status.json'),JSON.stringify({platform:'win32',arch:'x64',installer:'Passed',normalVisibleLaunch:'Passed',uninstall:'Passed',previewUserDataRetained:true,originalMeetfolioProfileTouched:false,physicalMicrophone:'Not verified',signed:false,signatures:s.signatures},null,2));
   console.log('Real NSIS uninstall passed; preview user data retained, original Meetfolio profile untouched');
 }
