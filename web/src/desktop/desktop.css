@@ -1427,3 +1427,16 @@
   .stage-live.view-settings .dt-workspace, .stage-live.view-import .dt-workspace { height: auto; overflow: visible; }
   .stage-live.view-settings .dt-body, .stage-live.view-import .dt-body { overflow: visible; }
 }
+
+/* Phase 4.1: durable import tasks and a review queue for long conversations. */
+.dt-decoder-setup, .dt-import-resume { margin-top: 20px; padding: 17px; border: 1px solid var(--dt-line); border-radius: 5px; background: #fafbf7; }
+.dt-decoder-setup h3, .dt-import-resume h3 { font-size: 13px; margin: 0 0 8px; }
+.dt-decoder-setup .dt-actions { margin-top: 12px; }
+.dt-import-resume > div { display: flex; gap: 10px; align-items: center; justify-content: space-between; padding: 12px 0 0; font-size: 11px; }
+.dt-review-warning { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 10px; padding: 7px 9px; margin: 7px 0; background: #faf4e6; border-left: 2px solid #b17d39; color: #76521f; }
+.dt-review-warning .dt-small-btn { font-size: 10px; color: #76521f; text-decoration: underline; }
+.dt-transcript-pages { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 20px; border-top: 1px solid var(--dt-line); background: #fafbf8; font-size: 11px; color: #58674f; }
+.dt-transcript-pages button { font-size: 11px; }
+.dt-import-options > [role='status'] { border-top: 1px solid var(--dt-line); padding-top: 14px; }
+.dt-import-options > [role='status'] > p:first-child { font-size: 12px; font-weight: 600; }
+.dt-import-options progress { height: 7px; }

@@ -423,9 +423,9 @@ export default function DesktopApp({
               </p>
             </div>
           )}
-          {importOpen && !settings ? <AudioImport key={i.id} i={i} ready={runtime.ready} onBusy={setImportBusy} onClose={() => setImportOpen(false)} onDone={(segments, durationMs, name) => {
+          {importOpen && !settings ? <AudioImport key={i.id} i={i} ready={runtime.ready} onBusy={setImportBusy} onClose={() => setImportOpen(false)} onDone={(segments, durationMs, name, partial) => {
             patch(i.id, current => appendImportedTranscript(current, segments, durationMs, name));
-            setImportOpen(false); setMessage(`Imported ${name}: ${segments.length} transcript segments. Review text, speaker labels and audio before using them as evidence.`);
+            setImportOpen(false); setMessage(partial ? `Recovered ${segments.length} confirmed segments. Transcription is unfinished; return to Import audio to resume.` : `Imported ${name}: ${segments.length} transcript segments. Review text, speaker labels and audio before using them as evidence.`);
           }}/> : settings ? (
             <div className="dt-prep-grid">
               <ModelCard runtime={runtime} />
@@ -500,6 +500,7 @@ export default function DesktopApp({
             />
           ) : (
             <ReviewExport
+              key={i.id}
               i={i}
               save={save}
               setMessage={setMessage}

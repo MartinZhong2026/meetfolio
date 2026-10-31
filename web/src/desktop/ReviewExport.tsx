@@ -2,7 +2,7 @@ import { fmtClock, effectiveText } from '../lib/format';
 import { noteCategoryLabel } from './englishNotes';
 import { TranscriptSegment } from './Transcript';
 import { jump, type ReviewProps } from './editor';
-import { useRef, useState } from 'react';
+import { useDeferredValue, useEffect, useRef, useState } from 'react';
 import { SegmentPlayback, type SegmentPlaybackHandle } from './SegmentPlayback';
 import { SpeakerManager } from './SpeakerManager';
 import { Search, Star, FileText } from 'lucide-react';
@@ -11,28 +11,41 @@ export function ReviewExport({ i, save, segmentChange, doExport, exporting }: Re
   const [query, setQuery] = useState('');
   const [important, setImportant] = useState(false);
   const [speaker, setSpeaker] = useState('');
+  const [needsReview, setNeedsReview] = useState(false);
+  const [page, setPage] = useState(0);
+  const deferredQuery = useDeferredValue(query);
+  const [pendingSource, setPendingSource] = useState<number | null>(null);
   const activeSpeaker = i.segments.some(s => s.speakerLabel === speaker) ? speaker : '';
-  const visible = i.segments.filter(s => (!important || s.isImportant) && (!activeSpeaker || s.speakerLabel === activeSpeaker) && (!query.trim() || effectiveText(s).toLocaleLowerCase().includes(query.trim().toLocaleLowerCase())));
+  const visible = i.segments.filter(s => (!important || s.isImportant) && (!needsReview || !!s.reviewReasons?.length) && (!activeSpeaker || s.speakerLabel === activeSpeaker) && (!deferredQuery.trim() || effectiveText(s).toLocaleLowerCase().includes(deferredQuery.trim().toLocaleLowerCase())));
+  const pageCount = Math.max(1, Math.ceil(visible.length / 100));
+  const currentPage = Math.min(page, pageCount - 1);
+  useEffect(() => {
+    if (pendingSource !== null && !query && !deferredQuery && !important && !needsReview && !activeSpeaker) {
+      jump(`review-seg-${pendingSource}`); setPendingSource(null);
+    }
+  }, [pendingSource, query, deferredQuery, important, needsReview, activeSpeaker, currentPage]);
   const excerpts = (i.segments.some(s => s.isImportant) ? i.segments.filter(s => s.isImportant) : i.segments).slice(0, 3);
   const finding = i.notes.find(n => n.category === 'finding');
   return (
     <div className="dt-review-grid">
       <section className="dt-card dt-review-sources" aria-label="Review original text">
         <div className="dt-review-title"><div><div className="dt-eyebrow">CONVERSATION RECORD</div><h2>Transcript <span>{i.segments.length} segments</span></h2></div><FileText size={20}/></div>
-        <div className="dt-transcript-toolbar"><label><Search size={15}/><input aria-label="Search transcript" type="search" placeholder="Find in transcript…" value={query} onChange={e => setQuery(e.target.value)}/></label>
-          <select aria-label="Filter transcript by speaker" value={activeSpeaker} onChange={e => setSpeaker(e.target.value)}><option value="">All speakers</option>{[...new Set(i.segments.map(s => s.speakerLabel).filter(Boolean))].map(label => <option key={label} value={label!}>{label}</option>)}</select>
-          <button className="dt-small-btn" aria-pressed={important} onClick={() => setImportant(v => !v)}><Star size={13}/>Marked</button>
+        <div className="dt-transcript-toolbar"><label><Search size={15}/><input aria-label="Search transcript" type="search" placeholder="Find in transcript…" value={query} onChange={e => { setQuery(e.target.value); setPage(0); }}/></label>
+          <select aria-label="Filter transcript by speaker" value={activeSpeaker} onChange={e => { setSpeaker(e.target.value); setPage(0); }}><option value="">All speakers</option>{[...new Set(i.segments.map(s => s.speakerLabel).filter(Boolean))].map(label => <option key={label} value={label!}>{label}</option>)}</select>
+          <button className="dt-small-btn" aria-pressed={important} onClick={() => { setImportant(v => !v); setPage(0); }}><Star size={13}/>Marked</button>
+          <button className="dt-small-btn" aria-pressed={needsReview} onClick={() => { setNeedsReview(v => !v); setPage(0); }}>Needs review</button>
         </div>
         <SegmentPlayback ref={playback} interviewId={i.id}/>
         <div className="dt-review-scroll">
-          {visible.map(s => <TranscriptSegment key={s.id} segment={s} prefix="review-" onChange={segmentChange} onPlay={segment => playback.current?.play(segment)}/>)}
-          {!!i.segments.length && !visible.length && <p className="dt-empty">No segments match. <button className="dt-small-btn" onClick={() => { setQuery(''); setImportant(false); setSpeaker(''); }}>Clear filters</button></p>}
+          {visible.slice(currentPage * 100, (currentPage + 1) * 100).map(s => <TranscriptSegment key={s.id} segment={s} prefix="review-" onChange={segmentChange} onPlay={segment => playback.current?.play(segment)}/>)}
+          {!!i.segments.length && !visible.length && <p className="dt-empty">No segments match. <button className="dt-small-btn" onClick={() => { setQuery(''); setImportant(false); setSpeaker(''); setNeedsReview(false); setPage(0); }}>Clear filters</button></p>}
           {i.notes.map(n => <article className="dt-evidence-note" id={`review-note-${n.id}`} key={n.id} tabIndex={-1}>
             <strong>Researcher note · {fmtClock(n.timestampMs ?? 0)} · {noteCategoryLabel(n.category)}</strong>
             <p>{n.content}</p>
           </article>)}
           {!i.segments.length && !i.notes.length && <p className="dt-empty">No text yet. Add manual transcript entries or notes in the live workspace.</p>}
         </div>
+        {pageCount > 1 && <nav className="dt-transcript-pages" aria-label="Transcript pages"><button className="dt-small-btn" disabled={currentPage === 0} onClick={() => { setPage(currentPage - 1); document.querySelector('.dt-review-scroll')?.scrollTo(0,0); }}>Previous 100</button><span>{currentPage * 100 + 1}–{Math.min(visible.length, (currentPage + 1) * 100)} of {visible.length}</span><button className="dt-small-btn" disabled={currentPage === pageCount - 1} onClick={() => { setPage(currentPage + 1); document.querySelector('.dt-review-scroll')?.scrollTo(0,0); }}>Next 100</button></nav>}
         <div className="dt-actions dt-export-actions">
           {(['txt', 'md', 'docx'] as const).map(format => <button className="dt-btn" key={format} disabled={exporting} onClick={() => void doExport(format)}>Export {format === 'md' ? 'Markdown' : format.toUpperCase()}</button>)}
         </div>
@@ -44,7 +57,7 @@ export function ReviewExport({ i, save, segmentChange, doExport, exporting }: Re
         <p className="dt-muted">Trace findings to the conversation. Keep your interpretation alongside the original source.</p>
         <div className="dt-summary-box">
           <h3>{i.synthetic ? 'Fictional demo · Evidence excerpts' : 'Evidence excerpts (verbatim)'}</h3>
-          {excerpts.map(s => <p key={s.id}>“{effectiveText(s)}” <button className="dt-citation" onClick={() => { setQuery(''); setImportant(false); setSpeaker(''); requestAnimationFrame(() => jump(`review-seg-${s.seq}`)); }}>Source {fmtClock(s.startMs)} ↗</button></p>)}
+          {excerpts.map(s => <p key={s.id}>“{effectiveText(s)}” <button className="dt-citation" onClick={() => { setQuery(''); setImportant(false); setSpeaker(''); setNeedsReview(false); setPage(Math.floor(i.segments.findIndex(item => item.id === s.id) / 100)); setPendingSource(s.seq); }}>Source {fmtClock(s.startMs)} ↗</button></p>)}
           {finding && <p className="dt-interpretation"><b>Researcher interpretation (not participant speech).</b> {finding.content} <button className="dt-citation" onClick={() => jump(`review-note-${finding.id}`)}>Note {fmtClock(finding.timestampMs ?? 0)} ↗</button></p>}
           {!excerpts.length && <p>Mark important transcript segments to create evidence links.</p>}
         </div>
