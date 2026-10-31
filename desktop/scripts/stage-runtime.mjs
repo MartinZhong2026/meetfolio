@@ -2,6 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { build } from 'esbuild';
+import { buildMacDecoder } from './build-mac-decoder.mjs';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 export async function stageRuntime() {
   const target = path.join(root, 'work/desktop-runtime/xasr');
@@ -38,5 +39,6 @@ export async function stageRuntime() {
   for (const name of ['sherpa-onnx-node', 'tar-stream', 'unbzip2-stream', 'proper-lockfile']) await copy(name, root);
   await fs.writeFile(path.join(target, 'package.json'), JSON.stringify({ name: 'meetfolio-native-runtime', private: true, type: 'module', versions: Object.fromEntries(versions) }, null, 2));
   await fs.writeFile(path.join(root, 'work/desktop-runtime/dependencies.json'), JSON.stringify(Object.fromEntries(versions), null, 2));
+  await buildMacDecoder(root, target);
   return target;
 }

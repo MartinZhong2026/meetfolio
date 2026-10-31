@@ -4,6 +4,8 @@ import { createHash, randomUUID } from 'node:crypto';
 import { pipeline } from 'node:stream/promises';
 import { Readable, Transform } from 'node:stream';
 import { spawn, type ChildProcess } from 'node:child_process';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import path from 'node:path';
 import yauzl from 'yauzl';
 import { IMPORT_MAX_SAMPLES, renameWithRetry } from './import-checkpoint';
@@ -42,11 +44,19 @@ async function extractExecutable(archive: string, destination: string) {
 export class AudioDecoder {
   private operation: AbortController | null = null;
   readonly directory: string;
-  constructor(root: string, private fetcher: typeof fetch = fetch, private progress: (bytes: number, total: number) => void = () => {}) { this.directory = path.join(root, DECODER.id); }
+  constructor(root: string, private fetcher: typeof fetch = fetch, private progress: (bytes: number, total: number) => void = () => {}, private systemDecoder?: string) { this.directory = path.join(root, DECODER.id); }
   get supported() { return process.platform === 'win32' && process.arch === 'x64'; }
   get busy() { return this.operation !== null; }
   cancel() { this.operation?.abort(); }
   async executable() {
+    if (process.platform === 'darwin' && ['arm64', 'x64'].includes(process.arch) && this.systemDecoder) {
+      const stat = await fs.lstat(this.systemDecoder);
+      if (!stat.isFile() || stat.isSymbolicLink() || !(stat.mode & 0o111)) throw new Error('Bundled macOS decoder unavailable');
+      await promisify(execFile)('/usr/bin/codesign', ['--verify', '--strict', this.systemDecoder], { timeout: 10000 });
+      const result = await promisify(execFile)(this.systemDecoder, ['--version'], { timeout: 10000 });
+      if (result.stdout.trim() !== `meetfolio-avfoundation-v1 ${process.arch}`) throw new Error('Bundled decoder architecture mismatch');
+      return this.systemDecoder;
+    }
     if (!this.supported) throw new Error('The native decoder is currently available on Windows x64');
     const stat = await fs.lstat(this.directory); if (!stat.isDirectory() || stat.isSymbolicLink()) throw new Error('Invalid decoder folder');
     const file = path.join(this.directory, 'ffmpeg.exe');
@@ -102,9 +112,9 @@ export async function decodeAudioFile(executable: string, file: string, append: 
   if (!['.wav','.mp3','.m4a'].includes(ext)) throw new Error('Unsupported audio file');
   const stat = await fs.lstat(file); if (!stat.isFile() || stat.isSymbolicLink() || !stat.size || stat.size > 2 * 1024 ** 3) throw new Error('Choose an audio file up to 2 GiB');
   signal.throwIfAborted();
-  const child = spawn(executable, ['-nostdin', '-hide_banner', '-loglevel', 'error', '-max_alloc', '67108864', '-protocol_whitelist', 'file,pipe',
-    '-f', ext === '.wav' ? 'wav' : ext === '.mp3' ? 'mp3' : 'mov', '-i', file, '-map', '0:a:0', '-vn', '-sn', '-dn', '-threads', '2', '-ac', '1', '-ar', '16000', '-f', 's16le', 'pipe:1'],
-    { windowsHide: true, stdio: ['ignore','pipe','pipe'] });
+  const args = process.platform === 'darwin' ? ['--decode', file] : ['-nostdin', '-hide_banner', '-loglevel', 'error', '-max_alloc', '67108864', '-protocol_whitelist', 'file,pipe',
+    '-f', ext === '.wav' ? 'wav' : ext === '.mp3' ? 'mp3' : 'mov', '-i', file, '-map', '0:a:0', '-vn', '-sn', '-dn', '-threads', '2', '-ac', '1', '-ar', '16000', '-f', 's16le', 'pipe:1'];
+  const child = spawn(executable, args, { windowsHide: true, stdio: ['ignore','pipe','pipe'] });
   onChild(child); child.stderr.resume();
   const closed = new Promise<number | null>((resolve, reject) => { child.once('error', reject); child.once('close', resolve); });
   // Attach rejection handling before iterating stdout in case process creation fails.
@@ -134,16 +144,18 @@ export async function decodeAudioFile(executable: string, file: string, append: 
 export async function probeAudioFile(executable: string, file: string): Promise<number> {
   const ext = path.extname(file).toLowerCase();
   if (!['.wav','.mp3','.m4a'].includes(ext)) throw new Error('Unsupported audio file');
-  const child = spawn(executable, ['-nostdin','-hide_banner','-protocol_whitelist','file,pipe','-f',ext === '.wav' ? 'wav' : ext === '.mp3' ? 'mp3' : 'mov','-i',file,'-map','0:a:0','-t','0','-f','null','-'], { windowsHide: true, stdio: ['ignore','ignore','pipe'] });
+  const mac = process.platform === 'darwin';
+  const child = spawn(executable, mac ? ['--probe', file] : ['-nostdin','-hide_banner','-protocol_whitelist','file,pipe','-f',ext === '.wav' ? 'wav' : ext === '.mp3' ? 'mp3' : 'mov','-i',file,'-map','0:a:0','-t','0','-f','null','-'], { windowsHide: true, stdio: ['ignore','pipe','pipe'] });
   let output = '', overflow = false;
-  child.stderr.on('data', chunk => { if (output.length + chunk.length > 65536) { overflow = true; child.kill(); } else output += chunk.toString('utf8'); });
+  (mac ? child.stdout : child.stderr).on('data', chunk => { if (output.length + chunk.length > 65536) { overflow = true; child.kill(); } else output += chunk.toString('utf8'); });
+  (mac ? child.stderr : child.stdout).resume();
   return await new Promise<number>((resolve,reject) => {
     const timer = setTimeout(() => { child.kill(); reject(new Error('Cannot inspect this recording. Try a PCM WAV.')); }, 20000);
     child.once('error', () => { clearTimeout(timer); reject(new Error('Cannot start the local decoder')); });
     child.once('close', code => {
       clearTimeout(timer);
       const m = /Duration:\s*(\d+):(\d+):(\d+(?:\.\d+)?)/.exec(output);
-      const seconds = m ? Number(m[1])*3600+Number(m[2])*60+Number(m[3]) : NaN;
+      const seconds = mac ? Number(output.trim()) / 1000 : m ? Number(m[1])*3600+Number(m[2])*60+Number(m[3]) : NaN;
       if (code !== 0 || overflow || !Number.isFinite(seconds) || seconds <= 0) reject(new Error('Cannot inspect this recording. Try a PCM WAV.'));
       else if (seconds > 7200.05) reject(new Error('Recording exceeds 120 minutes. Trim it before importing.'));
       else resolve(Math.min(seconds,7200)*1000);

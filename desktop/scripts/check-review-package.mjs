@@ -8,7 +8,7 @@ import { parseArgs } from 'node:util';
 import { listPackage } from '@electron/asar';
 import checkPack from './check-pack.cjs';
 
-const { values } = parseArgs({ options: { out: { type: 'string', default: 'work/desktop-packages' } } });
+const { values } = parseArgs({ options: { out: { type: 'string', default: 'work/phase5/packages' } } });
 const root = path.resolve(values.out);
 const appOutDir = path.join(root, 'win-unpacked');
 await checkPack({ appOutDir, electronPlatformName: 'win32' });

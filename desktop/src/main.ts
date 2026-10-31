@@ -16,10 +16,12 @@ import { SpeakerModels } from './speaker-models.js';
 import { AudioDecoder, probeAudioFile } from './audio-decoder.js';
 
 protocol.registerSchemesAsPrivileged([{ scheme: 'meetfolio', privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true, stream: true } }]);
-app.setName('Meetfolio');
-if (process.platform === 'win32') app.setAppUserModelId('org.meetfolio.desktop');
+const productName = app.getVersion().includes('-preview.') ? 'Meetfolio Preview' : 'Meetfolio';
+app.setName(productName);
+if (process.platform !== 'win32') app.setPath('userData', path.join(app.getPath('appData'), productName));
+if (process.platform === 'win32') app.setAppUserModelId(productName === 'Meetfolio Preview' ? 'org.meetfolio.desktop.preview' : 'org.meetfolio.desktop');
 const verification = app.commandLine.hasSwitch('verification');
-if (process.platform === 'win32' && process.env.LOCALAPPDATA) app.setPath('userData', path.join(process.env.LOCALAPPDATA, 'Meetfolio'));
+if (process.platform === 'win32' && process.env.LOCALAPPDATA) app.setPath('userData', path.join(process.env.LOCALAPPDATA, productName));
 if (verification && process.env.MEETFOLIO_USER_DATA) app.setPath('userData', path.resolve(process.env.MEETFOLIO_USER_DATA));
 const diagnostics = new Diagnostics(path.join(app.getPath('userData'), 'diagnostics'), !app.isPackaged);
 const gotLock = app.requestSingleInstanceLock();
@@ -92,7 +94,7 @@ async function boot(): Promise<void> {
   const { extractXAsrArchive } = await import(pathToFileURL(path.join(path.dirname(runtime), 'xasrArchive.js')).href);
   speakers = new SpeakerModels(model.root, extractXAsrArchive, ((input: string | URL | Request, init?: RequestInit) => net.fetch(input instanceof URL ? input.href : input, init)) as typeof fetch);
   decoder = new AudioDecoder(path.join(app.getPath('userData'), 'decoders'), ((input: string | URL | Request, init?: RequestInit) => net.fetch(input instanceof URL ? input.href : input, init)) as typeof fetch,
-    (downloadedBytes, totalBytes) => emit({ type: 'decoder-progress', downloadedBytes, totalBytes }));
+    (downloadedBytes, totalBytes) => emit({ type: 'decoder-progress', downloadedBytes, totalBytes }), path.join(runtimeRoot, 'decoder/meetfolio-audio-decoder'));
   imports = new AudioImports(recordingsRoot, path.join(runtimeRoot, 'asr/audio-import-worker.cjs'), runtimeRoot,
     async () => { await verifyModelCache(model.modelDir); return modelFiles(model.modelDir); }, () => speakers.files(),
     (id, phase, percent, detail) => emit({ type: 'import-progress', id, phase, percent, ...detail }), () => decoder.executable());
@@ -125,7 +127,7 @@ async function boot(): Promise<void> {
     Date.now() < microphoneUntil && (!('mediaType' in details) || details.mediaType === 'audio'));
   window = new BrowserWindow({ width: 1366, height: 768, minWidth: 900, minHeight: 620, show: false,
     icon: app.isPackaged ? path.join(root, 'branding/meetfolio.png') : path.join(root, 'desktop/assets/meetfolio.png'),
-    title: 'Meetfolio', backgroundColor: '#f5f4ed', autoHideMenuBar: true,
+    title: productName, backgroundColor: '#f5f4ed', autoHideMenuBar: true,
     webPreferences: { preload: path.join(__dirname, 'preload.cjs'), contextIsolation: true, sandbox: true, nodeIntegration: false, webSecurity: true },
   });
   window.once('ready-to-show', () => { windowReady = true; if (!quitting && !verification) { window?.show(); window?.focus(); } });
