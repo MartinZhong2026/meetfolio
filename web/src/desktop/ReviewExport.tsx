@@ -6,6 +6,7 @@ import { useDeferredValue, useEffect, useRef, useState } from 'react';
 import { SegmentPlayback, type SegmentPlaybackHandle } from './SegmentPlayback';
 import { SpeakerManager } from './SpeakerManager';
 import { Search, Star, FileText } from 'lucide-react';
+import { localRuntime } from './runtime';
 export function ReviewExport({ i, save, segmentChange, doExport, exporting }: ReviewProps) {
   const playback = useRef<SegmentPlaybackHandle>(null);
   const [query, setQuery] = useState('');
@@ -15,6 +16,22 @@ export function ReviewExport({ i, save, segmentChange, doExport, exporting }: Re
   const [page, setPage] = useState(0);
   const deferredQuery = useDeferredValue(query);
   const [pendingSource, setPendingSource] = useState<number | null>(null);
+  const [wavWorking, setWavWorking] = useState(false);
+  const [wavMessage, setWavMessage] = useState('');
+  const native = localRuntime();
+  async function exportWav(recordingId: string) {
+    if (!native?.exportRecording || wavWorking) return;
+    setWavWorking(true);
+    setWavMessage('');
+    try {
+      const saved = await native.exportRecording(recordingId);
+      setWavMessage(saved ? 'WAV saved separately. Keep the original audio and transcript together.' : 'WAV export cancelled.');
+    } catch {
+      setWavMessage('WAV export unavailable for this recording; check Local storage & backup info.');
+    } finally {
+      setWavWorking(false);
+    }
+  }
   const activeSpeaker = i.segments.some(s => s.speakerLabel === speaker) ? speaker : '';
   const visible = i.segments.filter(s => (!important || s.isImportant) && (!needsReview || !!s.reviewReasons?.length) && (!activeSpeaker || s.speakerLabel === activeSpeaker) && (!deferredQuery.trim() || effectiveText(s).toLocaleLowerCase().includes(deferredQuery.trim().toLocaleLowerCase())));
   const pageCount = Math.max(1, Math.ceil(visible.length / 100));
@@ -61,9 +78,11 @@ export function ReviewExport({ i, save, segmentChange, doExport, exporting }: Re
             <span><strong>Recording {index + 1}</strong> · {sourceId.slice(0, 8)} · {i.segments.filter(segment => segment.audio?.recordingId === sourceId).length} segments</span>
             <div className="dt-actions">
               {(['txt', 'md', 'docx'] as const).map(format => <button className="dt-small-btn" key={format} disabled={exporting} onClick={() => void doExport(format, sourceId)} aria-label={`Export recording ${index + 1} as ${format.toUpperCase()}`}>{format.toUpperCase()}</button>)}
+              {native?.exportRecording && <button className="dt-small-btn" disabled={exporting || wavWorking} onClick={() => void exportWav(sourceId)} aria-label={`Export recording ${index + 1} as WAV`}>WAV</button>}
             </div>
           </div>)}
           {unlinkedCount > 0 && <p className="dt-fine">{unlinkedCount} segment(s) lack a WAV link; available in Export all only.</p>}
+          <p role="status" aria-live="polite">{wavMessage}</p>
         </section>}
       </section>
       <section className="dt-card dt-review-inspector" aria-label="Manual evidence review">
