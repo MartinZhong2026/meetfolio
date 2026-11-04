@@ -219,7 +219,7 @@
   align-items: center;
   gap: 12px;
 }
-.dt-top-status > span:first-child:before {
+.dt-top-status > span[data-testid='desktop-save-status']:before {
   content: '';
   display: inline-block;
   width: 6px;
@@ -1091,7 +1091,7 @@
   .dt-brand small {
     font-size: 8px;
   }
-  .dt-top-status > span:nth-child(2) {
+  .dt-top-status > span:not([data-testid]):not(.dt-avatar) {
     display: none;
   }
   .dt-columns {
@@ -1697,4 +1697,39 @@
   .stage-review .dt-heading { flex-wrap: wrap; }
   .stage-review .dt-review-layout-actions > svg { display: none; }
   .stage-review .dt-transcript-toolbar { flex-wrap: wrap; }
+}
+
+/* Phase 5.5: keyboard-accessible, persistent UI language switch. */
+.dt-lang-switch {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid #d1dbd0;
+  border-radius: 7px;
+  background: #eef2eb;
+  white-space: nowrap;
+}
+.dt-lang-switch button {
+  color: #40594a;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.2;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  padding: 5px 9px;
+  min-height: 29px;
+}
+.dt-lang-switch button:hover { background: #e3ebe2; }
+.dt-lang-switch button[aria-pressed='true'] {
+  background: #315f53;
+  color: #fff;
+}
+.dt-top-status { flex-wrap: wrap; justify-content: flex-end; }
+@media (max-width: 760px) {
+  .dt-lang-switch button { font-size: 12px; padding: 6px 8px; }
+  .dt-top-status { width: 100%; justify-content: space-between; }
 }
