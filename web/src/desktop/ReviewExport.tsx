@@ -54,7 +54,7 @@ export function ReviewExport({ i, save, segmentChange, doExport, exporting }: Re
   return (
     <div className={`dt-review-grid ${inspectorOpen ? "with-inspector" : "focus-transcript"}`}>
       <section className="dt-card dt-review-sources" aria-label={t("Review original text")}>
-        <div className="dt-review-title"><div><div className="dt-eyebrow">{t("CONVERSATION RECORD")}</div><h2>{t("Transcript")} <span>{i.segments.length} segments</span></h2></div>
+        <div className="dt-review-title"><div><div className="dt-eyebrow">{t("CONVERSATION RECORD")}</div><h2>{t("Transcript")} <span>{i.segments.length} {t('segments')}</span></h2></div>
           <div className="dt-review-layout-actions">
             <FileText size={17} aria-hidden="true"/>
             <button type="button" className="dt-small-btn" aria-controls="dt-review-inspector" aria-expanded={inspectorOpen} onClick={() => setInspectorOpen(value => !value)}>
@@ -72,28 +72,28 @@ export function ReviewExport({ i, save, segmentChange, doExport, exporting }: Re
           {visible.slice(currentPage * 100, (currentPage + 1) * 100).map(s => <TranscriptSegment key={s.id} segment={s} prefix="review-" onChange={segmentChange} onPlay={segment => playback.current?.play(segment)}/>)}
           {!!i.segments.length && !visible.length && <p className="dt-empty">{t("No segments match.")} <button className="dt-small-btn" onClick={() => { setQuery(''); setImportant(false); setSpeaker(''); setNeedsReview(false); setPage(0); }}>{t("Clear filters")}</button></p>}
           {i.notes.map(n => <article className="dt-evidence-note" id={`review-note-${n.id}`} key={n.id} tabIndex={-1}>
-            <strong>Researcher note · {fmtClock(n.timestampMs ?? 0)} · {noteCategoryLabel(n.category)}</strong>
+            <strong>{t('Researcher note')} · {fmtClock(n.timestampMs ?? 0)} · {t(noteCategoryLabel(n.category))}</strong>
             <p>{n.content}</p>
           </article>)}
           {!i.segments.length && !i.notes.length && <p className="dt-empty">{t("No text yet. Add manual transcript entries or notes in the live workspace.")}</p>}
         </div>
-        {pageCount > 1 && <nav className="dt-transcript-pages" aria-label={t("Transcript pages")}><button className="dt-small-btn" disabled={currentPage === 0} onClick={() => { setPage(currentPage - 1); document.querySelector('.dt-review-scroll')?.scrollTo(0,0); }}>{t("Previous 100")}</button><span>{currentPage * 100 + 1}–{Math.min(visible.length, (currentPage + 1) * 100)} of {visible.length}</span><button className="dt-small-btn" disabled={currentPage === pageCount - 1} onClick={() => { setPage(currentPage + 1); document.querySelector('.dt-review-scroll')?.scrollTo(0,0); }}>{t("Next 100")}</button></nav>}
+        {pageCount > 1 && <nav className="dt-transcript-pages" aria-label={t("Transcript pages")}><button className="dt-small-btn" disabled={currentPage === 0} onClick={() => { setPage(currentPage - 1); document.querySelector('.dt-review-scroll')?.scrollTo(0,0); }}>{t("Previous 100")}</button><span>{currentPage * 100 + 1}–{Math.min(visible.length, (currentPage + 1) * 100)} {t('of')} {visible.length}</span><button className="dt-small-btn" disabled={currentPage === pageCount - 1} onClick={() => { setPage(currentPage + 1); document.querySelector('.dt-review-scroll')?.scrollTo(0,0); }}>{t("Next 100")}</button></nav>}
         <details className="dt-review-export-menu">
           <summary>{t("Export options")} <span>{t("TXT · Markdown · DOCX · Original WAV")}</span></summary>
           <div className="dt-actions dt-export-actions">
-            {(['txt', 'md', 'docx'] as const).map(format => <button className="dt-btn" key={format} disabled={exporting} onClick={() => void doExport(format)}>Export {format === 'md' ? 'Markdown' : format.toUpperCase()}</button>)}
+            {(['txt', 'md', 'docx'] as const).map(format => <button className="dt-btn" key={format} disabled={exporting} onClick={() => void doExport(format)}>{t('Export')} {format === 'md' ? 'Markdown' : format.toUpperCase()}</button>)}
           </div>
-        {sourceIds.length > 0 && <section className="dt-per-recording-export" aria-label="Export individual recordings">
+        {sourceIds.length > 0 && <section className="dt-per-recording-export" aria-label={t("Export individual recordings")}>
           <h3>{t("Export each recording separately")}</h3>
           <p className="dt-fine">{t("Each file below includes only transcript segments linked to that original WAV. Notes and unlinked manual segments stay in the complete interview export.")}</p>
           {sourceIds.map((sourceId, index) => <div className="dt-recording-export-row" key={sourceId}>
-            <span><strong>Recording {index + 1}</strong> · {sourceId.slice(0, 8)} · {i.segments.filter(segment => segment.audio?.recordingId === sourceId).length} segments</span>
+            <span><strong>{t('Recording')} {index + 1}</strong> · {sourceId.slice(0, 8)} · {i.segments.filter(segment => segment.audio?.recordingId === sourceId).length} {t('segments')}</span>
             <div className="dt-actions">
-              {(['txt', 'md', 'docx'] as const).map(format => <button className="dt-small-btn" key={format} disabled={exporting} onClick={() => void doExport(format, sourceId)} aria-label={`Export recording ${index + 1} as ${format.toUpperCase()}`}>{format.toUpperCase()}</button>)}
-              {native?.exportRecording && <button className="dt-small-btn" disabled={exporting || wavWorking} onClick={() => void exportWav(sourceId)} aria-label={`Export recording ${index + 1} as WAV`}>WAV</button>}
+              {(['txt', 'md', 'docx'] as const).map(format => <button className="dt-small-btn" key={format} disabled={exporting} onClick={() => void doExport(format, sourceId)} aria-label={`${t('Export')} ${t('Recording')} ${index + 1} ${t('as')} ${format.toUpperCase()}`}>{format.toUpperCase()}</button>)}
+              {native?.exportRecording && <button className="dt-small-btn" disabled={exporting || wavWorking} onClick={() => void exportWav(sourceId)} aria-label={`${t('Export')} ${t('Recording')} ${index + 1} ${t('as')} WAV`}>WAV</button>}
             </div>
           </div>)}
-          {unlinkedCount > 0 && <p className="dt-fine">{unlinkedCount} segment(s) lack a WAV link; available in Export all only.</p>}
+          {unlinkedCount > 0 && <p className="dt-fine">{unlinkedCount} {t('segments lack a WAV link; available in Export all only.')}</p>}
           <p role="status" aria-live="polite">{wavMessage}</p>
         </section>}
         </details>
@@ -105,8 +105,8 @@ export function ReviewExport({ i, save, segmentChange, doExport, exporting }: Re
         <p className="dt-muted">{t("Trace findings to the conversation. Keep your interpretation alongside the original source.")}</p>
         <div className="dt-summary-box">
           <h3>{t(i.synthetic ? 'Fictional demo · Evidence excerpts' : 'Evidence excerpts (verbatim)')}</h3>
-          {excerpts.map(s => <p key={s.id}>“{effectiveText(s)}” <button className="dt-citation" onClick={() => { setQuery(''); setImportant(false); setSpeaker(''); setNeedsReview(false); setPage(Math.floor(i.segments.findIndex(item => item.id === s.id) / 100)); setPendingSource(s.seq); }}>Source {fmtClock(s.startMs)} ↗</button></p>)}
-          {finding && <p className="dt-interpretation"><b>{t("Researcher interpretation (not participant speech).")}</b> {finding.content} <button className="dt-citation" onClick={() => jump(`review-note-${finding.id}`)}>Note {fmtClock(finding.timestampMs ?? 0)} ↗</button></p>}
+          {excerpts.map(s => <p key={s.id}>“{effectiveText(s)}” <button className="dt-citation" onClick={() => { setQuery(''); setImportant(false); setSpeaker(''); setNeedsReview(false); setPage(Math.floor(i.segments.findIndex(item => item.id === s.id) / 100)); setPendingSource(s.seq); }}>{t('Source')} {fmtClock(s.startMs)} ↗</button></p>)}
+          {finding && <p className="dt-interpretation"><b>{t("Researcher interpretation (not participant speech).")}</b> {finding.content} <button className="dt-citation" onClick={() => jump(`review-note-${finding.id}`)}>{t('Note')} {fmtClock(finding.timestampMs ?? 0)} ↗</button></p>}
           {!excerpts.length && <p>{t("Mark important transcript segments to create evidence links.")}</p>}
         </div>
         <label className="dt-label dt-review-label">{t("Researcher review notes (manual)")}
