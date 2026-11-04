@@ -2,9 +2,11 @@ import { useEffect, useState } from 'react';
 import { localRuntime, type RecordingInfo } from './runtime';
 import { fmtClock } from '../lib/format';
 import type { Segment } from '../lib/types';
+import { useLanguage } from './language';
 
 /** Audio lives outside JSON/IndexedDB. Keep orphaned files discoverable after notebook restore. */
 export function Recordings({ interviewId, onRecoverTranscript }: { interviewId: string; onRecoverTranscript?: (segments: Segment[]) => void }) {
+  const { t } = useLanguage();
   const runtime = localRuntime();
   const [items, setItems] = useState<RecordingInfo[]>([]);
   const [all, setAll] = useState(false);
