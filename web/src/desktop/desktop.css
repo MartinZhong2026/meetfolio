@@ -1527,3 +1527,26 @@
   .stage-live .dt-columns > .dt-panel { height: min(600px, 75vh); grid-column: auto; }
   .stage-live .dt-columns .dt-notes-panel { height: 400px; }
 }
+
+/* Phase 5.2: discoverable local history and per-audio export. */
+.dt-library-view { display: grid; gap: 16px; min-height: 280px; }
+.dt-library-view h2 { font-size: 20px; }
+.dt-library-view > .dt-label input { display: block; width: 100%; max-width: 640px; margin-top: 6px; }
+.dt-library-list { display: grid; gap: 9px; }
+.dt-library-row { border: 1px solid var(--dt-line); border-radius: 8px; display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 15px; background: #fbfdfa; }
+.dt-library-row > div { min-width: 0; flex: 1; }
+.dt-library-row strong { font-size: 15px; font-weight: 700; display: block; overflow-wrap: anywhere; }
+.dt-library-row small { font-size: 12px; color: #56675b; display: block; margin-top: 4px; }
+.dt-library-row button { flex-shrink: 0; }
+.dt-per-recording-export { padding: 16px 20px; border-top: 1px solid var(--dt-line); background: #f6f9f5; display: grid; gap: 10px; }
+.dt-per-recording-export h3 { font-size: 15px; margin: 0; }
+.dt-recording-export-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; justify-content: space-between; border: 1px solid #d9e3d9; border-radius: 6px; padding: 10px; background: white; }
+.dt-recording-export-row span { font-size: 13px; overflow-wrap: anywhere; }
+.dt-recording-export-row .dt-actions { flex-wrap: wrap; }
+.dt-import-mode { border: 1px solid #d7e6d8; background: #f3f8f1; border-radius: 6px; padding: 12px; margin: 15px 0 8px; }
+.dt-import-mode strong { display: block; font-size: 14px; }
+.dt-import-mode p { margin-top: 4px !important; }
+@media (max-width: 760px) {
+  .dt-library-row { align-items: flex-start; flex-direction: column; }
+  .dt-per-recording-export { padding: 12px; }
+}
