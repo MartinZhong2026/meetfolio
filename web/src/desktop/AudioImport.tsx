@@ -19,7 +19,8 @@ export function AudioImport({ i, ready, onBusy, onDone, onClose }: {
   const [completedMs, setCompletedMs] = useState(0);
   const [totalMs, setTotalMs] = useState(0);
   const [consent, setConsent] = useState(false);
-  const [diarize, setDiarize] = useState(true);
+  // Prefer the lower-overhead mode for long files; explicit opt-in for speaker separation.
+  const [diarize, setDiarize] = useState(false);
   const [speakerReady, setSpeakerReady] = useState(false);
   const [numSpeakers, setNumSpeakers] = useState(-1);
   const [busy, setBusy] = useState(false);
@@ -122,6 +123,10 @@ export function AudioImport({ i, ready, onBusy, onDone, onClose }: {
       {!!tasks.filter(t => !t.complete).length && <div className="dt-import-resume"><h3>Continue unfinished work</h3><p className="dt-fine">Resume from the last complete two-minute window. Saved audio and reviewed text are kept.</p>{tasks.filter(t => !t.complete).map(task => <div key={task.recordingId}><span><b>{task.name || `Recording ${task.recordingId.slice(0,8)}`}</b><br/>{fmtClock(task.completedMs)} / {fmtClock(task.durationMs)} · {task.segmentCount} confirmed segments</span><div className="dt-actions"><button className="dt-btn" disabled={busy || !ready} onClick={() => void resume(task)}>Resume {task.recordingId.slice(0,8)}</button><button className="dt-small-btn" disabled={busy || !task.segmentCount} onClick={async () => { try { onDone(await runtime!.recoverAudioImport!({ interviewId: i.id, recordingId: task.recordingId }), task.durationMs, task.name || 'Saved recording', true); } catch { setError('Cannot recover confirmed text. Audio and checkpoints are retained.'); } }}>Review confirmed text</button></div></div>)}</div>}
     </div><div className="dt-import-options">
       <h3>Transcription settings</h3><p className="dt-muted">Chinese · English · mixed speech</p>
+      <div className="dt-import-mode" role="status">
+        <strong>{diarize ? 'Speaker-aware import' : 'Faster import (recommended)'}</strong>
+        <p className="dt-fine">{diarize ? 'Runs extra local speaker separation and embedding inference. This can substantially increase processing time on some CPUs.' : 'Runs speech recognition without the optional speaker separation stage. You can still review, edit and export the transcript; automatic speaker labels will not be created.'}</p>
+      </div>
       <label className="dt-consent"><input type="checkbox" checked={diarize} disabled={busy} onChange={e => setDiarize(e.target.checked)}/>Automatically separate speakers</label>
       {diarize && <><label className="dt-label">Expected speakers<select aria-label="Expected speakers" value={numSpeakers} disabled={busy} onChange={e => setNumSpeakers(Number(e.target.value))}><option value={-1}>Detect automatically</option>{[1,2,3,4,5,6,8,12].map(n => <option key={n} value={n}>{n} speakers</option>)}</select></label>
         <p className="dt-fine">{speakerReady ? 'Speaker models verified · ready offline' : 'Install free speaker models once (~45 MB download).'} Labels are estimates; review short turns and overlapping voices.</p>
