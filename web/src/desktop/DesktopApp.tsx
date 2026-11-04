@@ -36,6 +36,8 @@ import { ReviewExport } from './ReviewExport';
 import { Recordings } from './Recordings';
 import { AudioImport } from './AudioImport';
 import { appendImportedTranscript } from './importTranscript';
+// Huninn is bundled by Vite for offline desktop use (no Google Fonts requests).
+import '@fontsource/huninn/400.css';
 import './desktop.css';
 
 const stageLabels: Record<Stage, string> = {
@@ -63,6 +65,7 @@ export default function DesktopApp({
   const [online, setOnline] = useState(navigator.onLine);
   const [librarySearch, setLibrarySearch] = useState('');
   const [railCollapsed, setRailCollapsed] = useState(false);
+  const [recentOpen, setRecentOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const cancelDeletionRef = useRef<HTMLButtonElement>(null);
   useEffect(() => { if (deleteTarget) cancelDeletionRef.current?.focus(); }, [deleteTarget]);
@@ -263,7 +266,7 @@ export default function DesktopApp({
     if (fileInput.current) fileInput.current.value = '';
   }
   return (
-    <div className={`dt-app stage-${i.stage}${settings ? ' view-settings' : importOpen ? ' view-import' : ''}`}>
+    <div className={`dt-app stage-${i.stage}${settings ? ' view-settings' : importOpen ? ' view-import' : libraryOpen ? ' view-library' : ''}`}>
       <a className="dt-skip" href="#desktop-main">
         Skip to main content
       </a>
@@ -329,8 +332,11 @@ export default function DesktopApp({
           <input aria-label="Search interviews" type="search" value={librarySearch}
             onChange={e => setLibrarySearch(e.target.value)} placeholder="Title, transcript or notes" />
         </label>
-        <p className="dt-nav-meta recent-label">Recent interviews · local</p>
-        <div className="dt-recents">
+        <button type="button" className="dt-recent-toggle" aria-controls="dt-recent-interviews" aria-expanded={recentOpen}
+          onClick={() => setRecentOpen(value => !value)} title={recentOpen ? 'Hide recent interviews' : 'Show recent interviews'}>
+          <span>Recent interviews</span><span aria-hidden="true">{book.interviews.length} {recentOpen ? '▴' : '▾'}</span>
+        </button>
+        <div className="dt-recents" id="dt-recent-interviews" hidden={!recentOpen}>
           {book.interviews.filter(item => {
             const q = librarySearch.trim().toLocaleLowerCase();
             return !q || [item.title, item.participant, ...item.segments.map(s => s.editedText ?? s.originalText),
