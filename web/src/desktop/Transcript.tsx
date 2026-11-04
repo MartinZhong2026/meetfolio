@@ -28,7 +28,7 @@ export function TranscriptSegment({
       <time>{fmtClock(s.startMs)}</time>
       <div className="dt-bubble">
         <div className="dt-speaker">
-          <button className="dt-speaker-name" aria-label={`${s.speakerLabel || t('Unlabeled speaker')} · Correct speaker for segment ${s.seq}`} onClick={() => { setSpeaker(s.speakerLabel || ''); setSpeakerEdit(v => !v); }}>{s.speakerLabel || t('Unlabeled speaker')}</button>{' '}
+          <button className="dt-speaker-name" aria-label={lang === 'zh-CN' ? `${s.speakerLabel || t('Unlabeled speaker')} · 修改第 ${s.seq} 段说话人` : `${s.speakerLabel || 'Unlabeled speaker'} · Correct speaker for segment ${s.seq}`} onClick={() => { setSpeaker(s.speakerLabel || ''); setSpeakerEdit(v => !v); }}>{s.speakerLabel || t('Unlabeled speaker')}</button>{' '}
           <span className="dt-source-label">
             {t(s.source === 'demo' ? 'DEMO' : s.source === 'manual' ? 'Manual entry' : 'Local engine')}
           </span>
