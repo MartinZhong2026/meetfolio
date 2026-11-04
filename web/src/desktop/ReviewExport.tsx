@@ -26,6 +26,11 @@ export function ReviewExport({ i, save, segmentChange, doExport, exporting }: Re
   }, [pendingSource, query, deferredQuery, important, needsReview, activeSpeaker, currentPage]);
   const excerpts = (i.segments.some(s => s.isImportant) ? i.segments.filter(s => s.isImportant) : i.segments).slice(0, 3);
   const finding = i.notes.find(n => n.category === 'finding');
+  // WAV identifiers are persisted on each ASR segment, including legacy merged imports.
+  const sourceIds = Array.from(new Set(
+    i.segments.map(segment => segment.audio?.recordingId).filter((id): id is string => !!id),
+  ));
+  const unlinkedCount = i.segments.filter(segment => !segment.audio).length;
   return (
     <div className="dt-review-grid">
       <section className="dt-card dt-review-sources" aria-label="Review original text">
@@ -47,8 +52,19 @@ export function ReviewExport({ i, save, segmentChange, doExport, exporting }: Re
         </div>
         {pageCount > 1 && <nav className="dt-transcript-pages" aria-label="Transcript pages"><button className="dt-small-btn" disabled={currentPage === 0} onClick={() => { setPage(currentPage - 1); document.querySelector('.dt-review-scroll')?.scrollTo(0,0); }}>Previous 100</button><span>{currentPage * 100 + 1}–{Math.min(visible.length, (currentPage + 1) * 100)} of {visible.length}</span><button className="dt-small-btn" disabled={currentPage === pageCount - 1} onClick={() => { setPage(currentPage + 1); document.querySelector('.dt-review-scroll')?.scrollTo(0,0); }}>Next 100</button></nav>}
         <div className="dt-actions dt-export-actions">
-          {(['txt', 'md', 'docx'] as const).map(format => <button className="dt-btn" key={format} disabled={exporting} onClick={() => void doExport(format)}>Export {format === 'md' ? 'Markdown' : format.toUpperCase()}</button>)}
+          {(['txt', 'md', 'docx'] as const).map(format => <button className="dt-btn" key={format} disabled={exporting} onClick={() => void doExport(format)}>Export all · {format === 'md' ? 'Markdown' : format.toUpperCase()}</button>)}
         </div>
+        {sourceIds.length > 0 && <section className="dt-per-recording-export" aria-label="Export individual recordings">
+          <h3>Export each recording separately</h3>
+          <p className="dt-fine">Each file below includes only transcript segments linked to that original WAV. Notes and unlinked manual segments stay in the complete interview export.</p>
+          {sourceIds.map((sourceId, index) => <div className="dt-recording-export-row" key={sourceId}>
+            <span><strong>Recording {index + 1}</strong> · {sourceId.slice(0, 8)} · {i.segments.filter(segment => segment.audio?.recordingId === sourceId).length} segments</span>
+            <div className="dt-actions">
+              {(['txt', 'md', 'docx'] as const).map(format => <button className="dt-small-btn" key={format} disabled={exporting} onClick={() => void doExport(format, sourceId)} aria-label={`Export recording ${index + 1} as ${format.toUpperCase()}`}>{format.toUpperCase()}</button>)}
+            </div>
+          </div>)}
+          {unlinkedCount > 0 && <p className="dt-fine">{unlinkedCount} segment(s) lack a WAV link; available in Export all only.</p>}
+        </section>}
       </section>
       <section className="dt-card dt-review-inspector" aria-label="Manual evidence review">
         <SpeakerManager key={i.id} i={i} save={save}/>
