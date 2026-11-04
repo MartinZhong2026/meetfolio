@@ -58,6 +58,7 @@ export async function downloadBlob(blob: Blob, name: string): Promise<void> {
 export async function exportInterview(
   i: Interview,
   format: 'txt' | 'md' | 'docx',
+  recordingId?: string,
 ) {
   const text = exportText(i, format === 'md');
   let blob: Blob;
@@ -90,7 +91,7 @@ export async function exportInterview(
     });
   await downloadBlob(
     blob,
-    `Meetfolio-${i.synthetic ? 'DEMO-' : ''}${i.id}.${format}`,
+    `Meetfolio-${i.synthetic ? 'DEMO-' : ''}${i.id}${recordingId ? `-recording-${recordingId}` : ''}.${format}`,
   );
 }
 export async function backup(book: Notebook) {
