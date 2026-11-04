@@ -40,6 +40,7 @@ test('navigation collapses without losing icon-button accessibility; deletion re
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
   await page.getByRole('button', { name: 'Expand navigation' }).click();
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+  await page.getByRole('button', { name: 'Recent interviews' }).click();
   await page.getByRole('button', { name: 'Delete interview Disposable local conversation' }).click();
   const dialog = page.getByRole('dialog', { name: 'Delete this interview?' });
   await expect(dialog).toBeVisible();
