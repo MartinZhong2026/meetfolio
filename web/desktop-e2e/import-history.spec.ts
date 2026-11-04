@@ -59,6 +59,7 @@ test('legacy merged recordings export independently using their original WAV tim
     db.close();
   }, { idA, idB });
   await page.reload();
+  await page.locator('.dt-review-export-menu > summary').click();
   const recordings = page.getByRole('region', { name: 'Export individual recordings' });
   await expect(recordings.getByRole('button', { name: 'Export recording 1 as MD' })).toBeVisible();
   await expect(recordings.getByRole('button', { name: 'Export recording 2 as MD' })).toBeVisible();
