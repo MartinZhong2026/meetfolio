@@ -1,8 +1,7 @@
 name: Recovery verification
+# Phase 5.1 review: opt-in only. Restore triggers after explicit user approval.
 on:
-  pull_request:
-  push:
-    branches: [main]
+  workflow_dispatch:
 
 concurrency:
   group: verify-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
