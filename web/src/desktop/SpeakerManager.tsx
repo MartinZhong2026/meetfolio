@@ -52,7 +52,9 @@ export function SpeakerManager({ i, save }: { i: Interview; save: (change: Parti
           <button type="button" className="dt-small-btn" disabled={!target} onClick={() => setConfirming(true)}>{t("Review merge")}</button>
           <button type="button" className="dt-small-btn" onClick={closeMerge}>{t("Cancel merge")}</button>
         </div> : <>
-          <p className="dt-fine" role="status">Change all {i.segments.filter(s => s.speakerLabel === speaker).length} {t('turns')} labelled {speaker} to {target} throughout this interview. Original words, timestamps, WAV files and edits remain unchanged. Speaker labels cannot be automatically undone.</p>
+          <p className="dt-fine" role="status">{lang === 'zh-CN'
+            ? `将本访谈中 ${i.segments.filter(s => s.speakerLabel === speaker).length} 条标为 ${speaker} 的发言全部改为 ${target}。原文、时间戳、WAV 文件和文本修订不会改变。合并无法自动撤销。`
+            : `Change all ${i.segments.filter(s => s.speakerLabel === speaker).length} turns labelled ${speaker} to ${target} throughout this interview. Original words, timestamps, WAV files and edits remain unchanged. Speaker labels cannot be automatically undone.`}</p>
           <div className="dt-actions">
             <button type="button" className="dt-btn" onClick={() => mergeLabels(speaker, target)}>{t("Confirm merge")}</button>
             <button type="button" className="dt-small-btn" onClick={closeMerge}>{t("Cancel merge")}</button>
