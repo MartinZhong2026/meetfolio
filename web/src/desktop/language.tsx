@@ -459,7 +459,10 @@ export const zhCN: Record<string, string> = {
   "The same person may have several labels in a long interview.": "长访谈中同一个人可能对应多个标签。",
   "Speak": "发言",
   "Backup restored as copies. Existing interviews were not overwritten.": "已将备份恢复为副本，现有访谈没有被覆盖。",
-  "Local transcription and model": "本地转录与模型"
+  "Local transcription and model": "本地转录与模型",
+  "into": "至",
+  "speakers": "位说话人",
+  "DEMO": "演示"
 };
 export function translate(key: string, lang: UILanguage, values?: Record<string, string | number>): string {
   const source = lang === 'zh-CN' ? (zhCN[key] ?? key) : key;
