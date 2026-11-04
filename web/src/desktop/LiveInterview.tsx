@@ -43,18 +43,14 @@ export function LiveInterview({
             <strong>{fmtClock(i.elapsedMs)}</strong>
             <p role="status" data-testid="desktop-recording-status">
               {i.synthetic
-                ? `DEMO · ${i.recording === 'recording' ? 'Demo running' : i.recording === 'paused' ? 'Demo paused' : 'Sample timeline (not real audio)'}`
-                : recordingLabels[i.recording]}
+                ? `DEMO · ${t(i.recording === 'recording' ? 'Demo running' : i.recording === 'paused' ? 'Demo paused' : 'Sample timeline (not real audio)')}`
+                : t(recordingLabels[i.recording])}
             </p>
           </div>
         </div>
         <div className="dt-actions">
           <span className={`dt-chip ${!runtime.ready ? 'warning' : ''}`}>
-            {i.synthetic
-              ? 'DEMO · No speech recognition'
-              : runtime.ready
-                ? 'X-ASR Ready · Offline'
-                : 'Local model not ready'}
+            {t(i.synthetic ? 'DEMO · No speech recognition' : runtime.ready ? 'X-ASR Ready · Offline' : 'Local model not ready')}
           </span>
           {i.synthetic ? (
             <button
@@ -71,7 +67,7 @@ export function LiveInterview({
               ) : (
                 <Play size={14} />
               )}
-              {i.recording === 'recording' ? 'Pause simulation' : 'Start simulation'}
+              {t(i.recording === 'recording' ? 'Pause simulation' : 'Start simulation')}
             </button>
           ) : i.recording === 'recording' ? (
             <button className="dt-btn" disabled={runtime.settling} onClick={() => void runtime.stop(i.id)}>
@@ -91,9 +87,7 @@ export function LiveInterview({
               onClick={() => void runtime.start(i)}
             >
               <Play size={14} />
-              {i.recording === 'interrupted'
-                ? 'Check device and resume'
-                : 'Start transcription'}
+              {t(i.recording === 'interrupted' ? 'Check device and resume' : 'Start transcription')}
             </button>
           )}
           <button
@@ -108,19 +102,19 @@ export function LiveInterview({
       {!i.synthetic && (
         <div className="dt-capture-info">
           <span>
-            Microphone:{' '}
-            {
+            {t('Microphone:')}{' '}
+            {t(
               {
                 unknown: 'Not requested',
                 requesting: 'Waiting for permission',
                 granted: 'Granted by runtime',
                 denied: 'Permission denied; allow microphone in system settings',
                 unavailable: 'Unavailable; check microphone',
-              }[runtime.permission]
+              }[runtime.permission])
             }
           </span>
           <span>
-            {i.consent ? 'Recording consent confirmed' : 'Consent not confirmed; manual notes still available'}
+            {t(i.consent ? 'Recording consent confirmed' : 'Consent not confirmed; manual notes still available')}
           </span>
           {window.meetfolioDesktop?.listRecordings && <span>{t("WAV saved locally · Export audio separately in Local storage & backup info")}</span>}
           {!runtime.ready && (
@@ -131,8 +125,8 @@ export function LiveInterview({
         </div>
       )}
       <div className="dt-live-layout-controls" role="group" aria-label={t("Live workspace layout")}>
-        <button className="dt-small-btn" aria-pressed={guideVisible} onClick={() => setGuideVisible(value => !value)}>{guideVisible ? 'Hide interview guide' : 'Show interview guide'}</button>
-        <button className="dt-small-btn" aria-pressed={notesVisible} onClick={() => setNotesVisible(value => !value)}>{notesVisible ? 'Hide research notes' : 'Show research notes'}</button>
+        <button className="dt-small-btn" aria-pressed={guideVisible} onClick={() => setGuideVisible(value => !value)}>{t(guideVisible ? 'Hide interview guide' : 'Show interview guide')}</button>
+        <button className="dt-small-btn" aria-pressed={notesVisible} onClick={() => setNotesVisible(value => !value)}>{t(notesVisible ? 'Hide research notes' : 'Show research notes')}</button>
         <button className="dt-small-btn" onClick={() => { setGuideVisible(false); setNotesVisible(false); }}>{t("Focus on transcript")}</button>
       </div>
       <div className={`dt-columns ${guideVisible ? 'with-guide' : 'without-guide'} ${notesVisible ? 'with-notes' : 'without-notes'}`} data-testid="desktop-columns">
@@ -140,7 +134,7 @@ export function LiveInterview({
           <div className="dt-panel-head">
             <h2>{t("Interview guide")}</h2>
             <small>
-              Covered {i.questions.filter((q) => q.done).length} /{' '}
+              {t('Covered')} {i.questions.filter((q) => q.done).length} /{' '}
               {i.questions.length}
             </small>
           </div>
@@ -167,7 +161,7 @@ export function LiveInterview({
                   }
                 />
                 <span>
-                  <small>Question {String(n + 1).padStart(2, '0')}</small>
+                  <small>{t('Question')} {String(n + 1).padStart(2, '0')}</small>
                   <strong>{q.text}</strong>
                 </span>
               </label>
@@ -178,7 +172,7 @@ export function LiveInterview({
             </div>
             {i.reference && (
               <details>
-                <summary>Background references · Not participant speech</summary>
+                <summary>{t('Background references · Not participant speech')}</summary>
               {(i.referenceFiles ?? []).map(f => <details key={f.id}><summary>{f.name} · background</summary><p className="dt-reference">{f.text.slice(0,10000)}</p></details>)}
                 <p className="dt-reference">{i.reference}</p>
               </details>
@@ -189,7 +183,7 @@ export function LiveInterview({
           <div className="dt-panel-head">
             <h2>{t("Live transcription")}</h2>
             <small>
-              {i.synthetic ? 'Synthetic demo text' : 'Local engine / manual entries'}
+              {t(i.synthetic ? 'Synthetic demo text' : 'Local engine / manual entries')}
             </small>
           </div>
           <label className="dt-search">
@@ -219,18 +213,18 @@ export function LiveInterview({
                   onChange={segmentChange}
                 />
               ))}
-            {runtime.partial && <div className="dt-partial" data-testid="native-partial" role="status" aria-live="polite"><time>{fmtClock(runtime.partial.startMs)}</time><p>{runtime.partial.text}<span> · Recognizing</span></p></div>}
+            {runtime.partial && <div className="dt-partial" data-testid="native-partial" role="status" aria-live="polite"><time>{fmtClock(runtime.partial.startMs)}</time><p>{runtime.partial.text}<span> · {t('Recognizing')}</span></p></div>}
           </div>
           <details className="dt-manual">
             <summary>{t("Add manual segment (not ASR)")}</summary>
             <label className="dt-label">
-              Manual entry (not ASR output)
+              {t('Manual entry (not ASR output)')}
               <textarea
-                aria-label="Manual entry (not ASR output)"
+                aria-label={t("Manual entry (not ASR output)")}
                 value={manual}
                 maxLength={200000}
                 onChange={(e) => save({ manualDraft: e.target.value })}
-                placeholder="Record anything missed by ASR, checking the timestamp..."
+                placeholder={t("Record anything missed by ASR, checking the timestamp...")}
               />
             </label>
             <button
@@ -264,18 +258,18 @@ export function LiveInterview({
             </button>
           </details>
           <div className="dt-panel-footer">
-            Timestamps and original text are preserved <span>☆ Mark important</span>
+            {t('Timestamps and original text are preserved')} <span>{t('☆ Mark important')}</span>
           </div>
         </section>
         {notesVisible && <section className="dt-panel dt-notes-panel" aria-label={t("Research notes")}>
           <div className="dt-panel-head">
             <h2>{t("Research notes")}</h2>
-            <small>{i.notes.length} notes</small>
+            <small>{i.notes.length} {t('notes')}</small>
           </div>
           <div className="dt-panel-body">
             {!i.notes.length && (
               <p className="dt-empty">
-                Write observations, follow-up questions and research ideas; separate them from participant speech.
+                {t('Write observations, follow-up questions and research ideas; separate them from participant speech.')}
               </p>
             )}
             {i.notes.map((n) => (
@@ -296,14 +290,14 @@ export function LiveInterview({
                         null,
                       );
                       if (nearest) jump(`seg-${nearest.seq}`);
-                      else setMessage('No transcript near this note timestamp.');
+                      else setMessage(t('No transcript near this note timestamp.'));
                     }}
                   >
                     {fmtClock(n.timestampMs ?? 0)}
                   </button>
-                  <span>· {noteCategoryLabel(n.category)}</span>
+                  <span>· {t(noteCategoryLabel(n.category))}</span>
                   <button
-                    aria-label={`Important note ${n.id}`}
+                    aria-label={`${t('Important note')} ${n.id}`}
                     aria-pressed={n.isImportant}
                     onClick={() =>
                       save({
@@ -322,7 +316,7 @@ export function LiveInterview({
                   </button>
                 </div>
                 <label className="dt-sr-only" htmlFor={`note-edit-${n.id}`}>
-                  Edit note {n.id}
+                  {t('Edit note')} {n.id}
                 </label>
                 <textarea
                   id={`note-edit-${n.id}`}
@@ -343,7 +337,7 @@ export function LiveInterview({
                   }
                 />
                 <label className="dt-sr-only" htmlFor={`note-category-${n.id}`}>
-                  Note category {n.id}
+                  {t('Note category')} {n.id}
                 </label>
                 <select
                   id={`note-category-${n.id}`}
@@ -363,7 +357,7 @@ export function LiveInterview({
                 >
                   {NOTE_CATEGORIES.map((c) => (
                     <option key={c.value} value={c.value}>
-                      {c.label}
+                      {t(c.label)}
                     </option>
                   ))}
                 </select>
@@ -393,7 +387,7 @@ export function LiveInterview({
               >
                 {NOTE_CATEGORIES.map((c) => (
                   <option key={c.value} value={c.value}>
-                    {c.label}
+                    {t(c.label)}
                   </option>
                 ))}
               </select>
