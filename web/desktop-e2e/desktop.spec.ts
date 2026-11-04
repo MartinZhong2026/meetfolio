@@ -62,9 +62,14 @@ test('reference stages, offline notes and evidence, honest model state, edited e
     exact: true,
   });
   const notes = columns.getByRole('region', { name: 'Research notes', exact: true });
-  const boxes = await Promise.all(
-    [guide, transcript, notes].map((p) => p.boundingBox()),
-  );
+  // The interview guide now starts collapsed so the transcript has more room.
+  await expect(guide).toHaveCount(0);
+  const initialTranscript = await transcript.boundingBox();
+  const initialNotes = await notes.boundingBox();
+  expect(initialTranscript && initialNotes).toBeTruthy();
+  expect(initialTranscript!.width).toBeGreaterThan(initialNotes!.width);
+  await page.getByRole('button', { name: 'Show interview guide', exact: true }).click();
+  const boxes = await Promise.all([guide, transcript, notes].map(p => p.boundingBox()));
   expect(boxes.every(Boolean)).toBe(true);
   expect(boxes[0]!.x + boxes[0]!.width).toBeLessThan(boxes[1]!.x);
   expect(boxes[1]!.width).toBeGreaterThan(boxes[2]!.width);
