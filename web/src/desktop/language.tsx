@@ -457,7 +457,9 @@ export const zhCN: Record<string, string> = {
   "Saved recording": "已保存的录音",
   "Cannot recover confirmed text. Audio and checkpoints are retained.": "无法恢复已确认文字，音频和检查点均已保留。",
   "The same person may have several labels in a long interview.": "长访谈中同一个人可能对应多个标签。",
-  "Speak": "发言"
+  "Speak": "发言",
+  "Backup restored as copies. Existing interviews were not overwritten.": "已将备份恢复为副本，现有访谈没有被覆盖。",
+  "Local transcription and model": "本地转录与模型"
 };
 export function translate(key: string, lang: UILanguage, values?: Record<string, string | number>): string {
   const source = lang === 'zh-CN' ? (zhCN[key] ?? key) : key;
