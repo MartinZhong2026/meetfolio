@@ -361,6 +361,7 @@ test('native bridge contract: download, permission denial, interruption and relo
   await page
     .getByRole('checkbox', { name: 'I have obtained informed recording consent from the participant (required)' })
     .check();
+  await page.getByText('Advanced model controls · import / repair / cancel', { exact: true }).click();
   await page.getByRole('button', { name: 'Download free speech model', exact: true }).click();
   await expect(
     page.getByRole('progressbar', { name: 'Model download progress' }),
