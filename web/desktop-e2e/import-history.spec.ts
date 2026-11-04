@@ -9,6 +9,10 @@ test('new audio import uses a separate interview; existing history stays discove
   await expect(page.getByRole('region', { name: 'Import audio recording' })).toBeVisible();
   await expect(page.getByText('New research interview', { exact: true })).toBeVisible();
   await expect(page.getByRole('checkbox', { name: 'Automatically separate speakers' })).not.toBeChecked();
+  await page.getByRole('checkbox', { name: 'Automatically separate speakers' }).check();
+  await page.getByRole('combobox', { name: 'Expected speakers' }).selectOption('2');
+  await expect(page.getByRole('combobox', { name: 'Expected speakers' })).toHaveValue('2');
+  await expect(page.getByText('Automatic detection can split one person into several labels', { exact: false })).toBeVisible();
   await page.getByRole('button', { name: 'My interviews', exact: true }).click();
   const history = page.getByRole('region', { name: 'Saved interviews' });
   await expect(history.getByText('Earlier transcript')).toBeVisible();
