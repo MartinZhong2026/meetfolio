@@ -82,7 +82,7 @@ export function ModelCard({ runtime: r }: { runtime: ReturnType<typeof useLocalR
           <small>{progress === null ? 'Download size unavailable' : `${progress}% · ${((r.model?.downloadedBytes ?? 0)/1048576).toFixed(1)} / ${((r.model?.totalBytes ?? 0)/1048576).toFixed(1)} MiB`}</small>
         </>}
         <details className="dt-advanced-model"><summary>Advanced model controls · import / repair / cancel</summary><div className="dt-actions">
-          <button className="dt-btn" onClick={() => void r.check() disabled={r.checking || r.downloading}><RefreshCw size={12}/> Check again</button>
+          <button className="dt-btn" onClick={() => void r.check()} disabled={r.checking || r.downloading}><RefreshCw size={12}/> Check again</button>
           {r.downloading && r.canCancel && <button className="dt-btn" onClick={() => void r.cancel()}>Cancel download</button>}
           {r.canImport && <button className="dt-btn" disabled={r.downloading || r.checking} onClick={() => void r.importModel()}>Import official model</button>}
           {r.canRepair && <button className="dt-btn" disabled={r.downloading || r.checking} onClick={() => void r.repair()}>Repair model</button>}
