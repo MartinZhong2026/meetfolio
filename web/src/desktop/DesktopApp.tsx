@@ -11,6 +11,9 @@ import {
   ShieldCheck,
   Upload,
   AudioLines,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Trash2,
 } from 'lucide-react';
 import { uuid } from '../lib/format';
 import type { Segment } from '../lib/types';
@@ -58,6 +61,10 @@ export default function DesktopApp({
   const [exporting, setExporting] = useState(false);
   const [online, setOnline] = useState(navigator.onLine);
   const [librarySearch, setLibrarySearch] = useState('');
+  const [railCollapsed, setRailCollapsed] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+  const cancelDeletionRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => { if (deleteTarget) cancelDeletionRef.current?.focus(); }, [deleteTarget]);
   const fileInput = useRef<HTMLInputElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
   const patch = useCallback(
@@ -108,6 +115,7 @@ export default function DesktopApp({
       </main>
     );
   const book = store.book;
+  const pendingDelete = deleteTarget ? book.interviews.find(entry => entry.id === deleteTarget) : undefined;
   const save = (change: Partial<Interview>) =>
     patch(i.id, (current) => ({ ...current, ...change }));
   const segmentChange = (s: Segment) =>
@@ -148,6 +156,24 @@ export default function DesktopApp({
         ? 'Fictional demo loaded; no real microphone or speech recognition used.'
         : 'A new local interview was created.',
     );
+  }
+  function deleteInterview(targetId: string) {
+    if (busy || store.error) {
+      setMessage('Finish recording and resolve local save errors before deleting.');
+      return;
+    }
+    const target = book.interviews.find(entry => entry.id === targetId);
+    if (!target || ['starting', 'recording'].includes(target.recording)) return;
+    store.update(current => {
+      const remaining = current.interviews.filter(entry => entry.id !== targetId);
+      if (!remaining.length) remaining.push(newInterview());
+      return { ...current, interviews: remaining,
+        activeId: current.activeId === targetId ? remaining[0].id : current.activeId };
+    });
+    setDeleteTarget(null);
+    setSettings(false);
+    setImportOpen(false);
+    setMessage('Interview removed from this notebook. Original WAV files were NOT deleted; find them under Local storage & backup info.');
   }
   function openImport() {
     if (busy || !i) return;
@@ -220,7 +246,10 @@ export default function DesktopApp({
       <a className="dt-skip" href="#desktop-main">
         Skip to main content
       </a>
-      <aside className="dt-rail" aria-label="Interview navigation">
+      <aside className={`dt-rail${railCollapsed ? ' collapsed' : ''}`} aria-label="Interview navigation">
+        <button type="button" className="dt-rail-toggle" aria-label={railCollapsed ? 'Expand navigation' : 'Collapse navigation'} title={railCollapsed ? 'Expand navigation' : 'Collapse navigation'} aria-expanded={!railCollapsed} onClick={() => setRailCollapsed(value => !value)}>
+          {railCollapsed ? <PanelLeftOpen size={18}/> : <PanelLeftClose size={18}/>}
+        </button>
         <a className="dt-brand" href={standalone ? '/' : '/desktop'}>
           <span>
             <BookOpen size={22} />
@@ -241,7 +270,7 @@ export default function DesktopApp({
           }}
         >
           <Grid2X2 size={17} />
-          My interviews
+          <span className="dt-nav-text">My interviews</span>
         </button>
         <button
           className={`dt-nav${importOpen && !settings ? ' active' : ''}`}
@@ -249,7 +278,7 @@ export default function DesktopApp({
           onClick={openImport}
         >
           <AudioLines size={18} />
-          Import audio
+          <span className="dt-nav-text">Import audio</span>
         </button>
         <button
           className="dt-nav"
@@ -257,7 +286,7 @@ export default function DesktopApp({
           onClick={() => create()}
         >
           <Plus size={18} />
-          New interview
+          <span className="dt-nav-text">New interview</span>
         </button>
         <button
           className="dt-nav"
@@ -268,7 +297,7 @@ export default function DesktopApp({
           }}
         >
           <FolderOpen size={17} />
-          Memos & references
+          <span className="dt-nav-text">Memos & references</span>
         </button>
         <label className="dt-library-search"><span>Search local interviews</span>
           <input aria-label="Search interviews" type="search" value={librarySearch}
@@ -282,25 +311,23 @@ export default function DesktopApp({
               ...item.notes.map(n => n.content), ...(item.referenceFiles ?? []).map(f => f.name)]
               .some(text => text.toLocaleLowerCase().includes(q));
           }).map((item) => (
-            <button
-              key={item.id}
-              className={item.id === i.id ? 'selected' : ''}
-              disabled={busy}
-              onClick={() => {
-                store.update((b) => ({ ...b, activeId: item.id }));
-                setSettings(false);
-                setImportOpen(false);
-              }}
-            >
-              <strong>
-                {item.synthetic ? 'DEMO · ' : ''}
-                {item.title || 'Untitled interview'}
-              </strong>
-              <small>
-                {new Date(item.createdAt).toLocaleDateString('zh-CN')} ·{' '}
-                {stageLabels[item.stage]}
-              </small>
-            </button>
+            <div className="dt-recent-row" key={item.id}>
+              <button
+                className={item.id === i.id ? 'selected' : ''}
+                disabled={busy}
+                onClick={() => {
+                  store.update((b) => ({ ...b, activeId: item.id }));
+                  setSettings(false);
+                  setImportOpen(false);
+                }}
+              >
+                <strong>{item.synthetic ? 'DEMO · ' : ''}{item.title || 'Untitled interview'}</strong>
+                <small>{new Date(item.createdAt).toLocaleDateString('zh-CN')} · {stageLabels[item.stage]}</small>
+              </button>
+              <button type="button" className="dt-delete-interview" title="Delete interview" aria-label={`Delete interview ${item.title || 'Untitled interview'}`} disabled={busy || !!store.error} onClick={() => setDeleteTarget(item.id)}>
+                <Trash2 size={15}/>
+              </button>
+            </div>
           ))}
         </div>
         <div className="dt-rail-bottom">
@@ -310,7 +337,7 @@ export default function DesktopApp({
             onClick={() => setSettings((v) => !v)}
           >
             <Settings2 size={16} />
-            Model & Settings
+            <span className="dt-nav-text">Model & Settings</span>
           </button>
           <small>
             {runtime.ready
@@ -529,6 +556,17 @@ export default function DesktopApp({
           />
         </main>
       </div>
+      {pendingDelete && <div className="dt-delete-overlay">
+        <div className="dt-delete-dialog" role="dialog" aria-modal="true" aria-labelledby="dt-delete-title" onKeyDown={e => { if (e.key === 'Escape') setDeleteTarget(null); }}>
+          <h2 id="dt-delete-title">Delete this interview?</h2>
+          <p><strong>{pendingDelete.title || 'Untitled interview'}</strong></p>
+          <p>This removes the transcript, corrections and notes from the local notebook. It cannot be undone. Original WAV files remain in local storage and can be found in Local storage &amp; backup info.</p>
+          <div className="dt-actions">
+            <button ref={cancelDeletionRef} className="dt-btn" onClick={() => setDeleteTarget(null)}>Cancel</button>
+            <button className="dt-btn dt-danger" disabled={busy || !!store.error} onClick={() => deleteInterview(pendingDelete.id)}>Delete interview</button>
+          </div>
+        </div>
+      </div>}
     </div>
   );
 }
