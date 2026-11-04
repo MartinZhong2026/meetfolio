@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useLanguage } from './language';
 import { ArrowRight, Pause, Play, FileText, Star } from 'lucide-react';
 import type { Interview } from './model';
 import type { Segment, NoteCategory } from '../lib/types';
@@ -24,6 +25,7 @@ export function LiveInterview({
   openSettings,
   segmentChange,
 }: LiveProps) {
+  const { t } = useLanguage();
   const [search, setSearch] = useState('');
   // The live transcript is the primary surface; guide and notes are optional panels.
   const [guideVisible, setGuideVisible] = useState(false);
@@ -31,7 +33,7 @@ export function LiveInterview({
   const manual = i.manualDraft;
   return (
     <>
-      <section className="dt-recorder" aria-label="Recording controls">
+      <section className="dt-recorder" aria-label={t("Recording controls")}>
         <div className="dt-recorder-left">
           <span
             className={`dt-record-dot ${i.recording === 'recording' ? 'recording' : ''}`}
@@ -74,7 +76,7 @@ export function LiveInterview({
           ) : i.recording === 'recording' ? (
             <button className="dt-btn" disabled={runtime.settling} onClick={() => void runtime.stop(i.id)}>
               <Pause size={14} />
-              Pause transcription
+              {t("Pause transcription")}
             </button>
           ) : (
             <button
@@ -99,7 +101,7 @@ export function LiveInterview({
             disabled={i.recording === 'starting' || runtime.settling}
             onClick={() => void finish()}
           >
-            Finish & review <ArrowRight size={15} />
+            {t("Finish & review")} <ArrowRight size={15} />
           </button>
         </div>
       </section>
@@ -120,23 +122,23 @@ export function LiveInterview({
           <span>
             {i.consent ? 'Recording consent confirmed' : 'Consent not confirmed; manual notes still available'}
           </span>
-          {window.meetfolioDesktop?.listRecordings && <span>WAV saved locally · Export audio separately in Local storage & backup info</span>}
+          {window.meetfolioDesktop?.listRecordings && <span>{t("WAV saved locally · Export audio separately in Local storage & backup info")}</span>}
           {!runtime.ready && (
             <button className="dt-link" onClick={() => openSettings()}>
-              Open Model & Settings
+              {t("Open Model & Settings")}
             </button>
           )}
         </div>
       )}
-      <div className="dt-live-layout-controls" role="group" aria-label="Live workspace layout">
+      <div className="dt-live-layout-controls" role="group" aria-label={t("Live workspace layout")}>
         <button className="dt-small-btn" aria-pressed={guideVisible} onClick={() => setGuideVisible(value => !value)}>{guideVisible ? 'Hide interview guide' : 'Show interview guide'}</button>
         <button className="dt-small-btn" aria-pressed={notesVisible} onClick={() => setNotesVisible(value => !value)}>{notesVisible ? 'Hide research notes' : 'Show research notes'}</button>
-        <button className="dt-small-btn" onClick={() => { setGuideVisible(false); setNotesVisible(false); }}>Focus on transcript</button>
+        <button className="dt-small-btn" onClick={() => { setGuideVisible(false); setNotesVisible(false); }}>{t("Focus on transcript")}</button>
       </div>
       <div className={`dt-columns ${guideVisible ? 'with-guide' : 'without-guide'} ${notesVisible ? 'with-notes' : 'without-notes'}`} data-testid="desktop-columns">
-        {guideVisible && <section className="dt-panel" aria-label="Interview guide">
+        {guideVisible && <section className="dt-panel" aria-label={t("Interview guide")}>
           <div className="dt-panel-head">
-            <h2>Interview guide</h2>
+            <h2>{t("Interview guide")}</h2>
             <small>
               Covered {i.questions.filter((q) => q.done).length} /{' '}
               {i.questions.length}
@@ -145,7 +147,7 @@ export function LiveInterview({
           <div className="dt-panel-body">
             {!i.questions.length && (
               <p className="dt-empty">
-                Add questions in Preparation; manual notes are available at any time.
+                {t("Add questions in Preparation; manual notes are available at any time.")}
               </p>
             )}
             {i.questions.map((q, n) => (
@@ -171,8 +173,8 @@ export function LiveInterview({
               </label>
             ))}
             <div className="dt-guide-hint">
-              <b>Research reminder</b>
-              <p>Listen carefully; follow up naturally rather than reading every question mechanically.</p>
+              <b>{t("Research reminder")}</b>
+              <p>{t("Listen carefully; follow up naturally rather than reading every question mechanically.")}</p>
             </div>
             {i.reference && (
               <details>
@@ -183,28 +185,28 @@ export function LiveInterview({
             )}
           </div>
         </section>}
-        <section className="dt-panel dt-transcript-panel" aria-label="Live transcription">
+        <section className="dt-panel dt-transcript-panel" aria-label={t("Live transcription")}>
           <div className="dt-panel-head">
-            <h2>Live transcription</h2>
+            <h2>{t("Live transcription")}</h2>
             <small>
               {i.synthetic ? 'Synthetic demo text' : 'Local engine / manual entries'}
             </small>
           </div>
           <label className="dt-search">
-            Search transcript
+            {t("Search transcript")}
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search transcript..."
+              placeholder={t("Search transcript...")}
             />
           </label>
           <div className="dt-panel-body dt-transcript-list">
             {!i.segments.length && (
               <div className="dt-empty">
                 <FileText size={30} />
-                <h3>Waiting for transcription</h3>
+                <h3>{t("Waiting for transcription")}</h3>
                 <p>
-                  No transcript yet. Add manual segments or start X-ASR after the model is ready.
+                  {t("No transcript yet. Add manual segments or start X-ASR after the model is ready.")}
                 </p>
               </div>
             )}
@@ -220,7 +222,7 @@ export function LiveInterview({
             {runtime.partial && <div className="dt-partial" data-testid="native-partial" role="status" aria-live="polite"><time>{fmtClock(runtime.partial.startMs)}</time><p>{runtime.partial.text}<span> · Recognizing</span></p></div>}
           </div>
           <details className="dt-manual">
-            <summary>Add manual segment (not ASR)</summary>
+            <summary>{t("Add manual segment (not ASR)")}</summary>
             <label className="dt-label">
               Manual entry (not ASR output)
               <textarea
@@ -265,9 +267,9 @@ export function LiveInterview({
             Timestamps and original text are preserved <span>☆ Mark important</span>
           </div>
         </section>
-        {notesVisible && <section className="dt-panel dt-notes-panel" aria-label="Research notes">
+        {notesVisible && <section className="dt-panel dt-notes-panel" aria-label={t("Research notes")}>
           <div className="dt-panel-head">
-            <h2>Research notes</h2>
+            <h2>{t("Research notes")}</h2>
             <small>{i.notes.length} notes</small>
           </div>
           <div className="dt-panel-body">
@@ -370,17 +372,17 @@ export function LiveInterview({
           </div>
           <div className="dt-note-editor">
             <label className="dt-label">
-              New research note
+              {t("New research note")}
               <textarea
-                aria-label="New research note"
+                aria-label={t("New research note")}
                 value={i.draftNote}
                 maxLength={200000}
                 onChange={(e) => save({ draftNote: e.target.value })}
-                placeholder="Record an observation, follow-up or research idea..."
+                placeholder={t("Record an observation, follow-up or research idea...")}
               />
             </label>
             <label className="dt-label">
-              Note category
+              {t("Note category")}
               <select
                 value={i.draftCategory}
                 onChange={(e) =>
@@ -419,9 +421,9 @@ export function LiveInterview({
                 }));
               }}
             >
-              Save note
+              {t("Save note")}
             </button>
-            <small>Drafts are saved locally</small>
+            <small>{t("Drafts are saved locally")}</small>
           </div>
         </section>}
       </div>
