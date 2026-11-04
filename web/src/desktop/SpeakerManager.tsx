@@ -42,7 +42,7 @@ export function SpeakerManager({ i, save }: { i: Interview; save: (change: Parti
         {speakers.length > 1 && <button className="dt-small-btn" aria-label={lang === 'zh-CN' ? `将 ${speaker} 合并到其他说话人` : `Merge ${speaker} into another speaker`} onClick={() => { setEditing(null); setMerging(speaker); setTarget(''); setConfirming(false); }}>{t("Merge")}</button>}
       </>}
       {merging === speaker && <div className="dt-speaker-merge">
-        <label className="dt-label">{t('Merge')} {speaker} {t('Merge into')}
+        <label className="dt-label">{t('Merge')} {speaker} {t('into')}
           <select aria-label={`${t('Target speaker for')} ${speaker}`} value={target} onChange={e => { setTarget(e.target.value); setConfirming(false); }}>
             <option value="">{t("Select the same person's correct label")}</option>
             {speakers.filter(value => value !== speaker).map(value => <option key={value} value={value}>{value}</option>)}
