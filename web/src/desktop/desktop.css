@@ -1550,3 +1550,11 @@
   .dt-library-row { align-items: flex-start; flex-direction: column; }
   .dt-per-recording-export { padding: 12px; }
 }
+
+/* Speaker labels are estimates. Merge is explicit and never changes WAV/text. */
+.dt-speaker-row { flex-wrap: wrap; }
+.dt-speaker-row > .dt-speaker-merge { flex: 0 0 100%; min-width: 0; background: #f3f7f1; border: 1px solid #d8e4d6; border-radius: 5px; padding: 11px; margin-top: 5px; }
+.dt-speaker-merge .dt-label { display: block; font-size: 12px; }
+.dt-speaker-merge select { display: block; width: 100%; margin-top: 6px; border: 1px solid #cad8cb; border-radius: 4px; background: white; padding: 7px; color: #273b2c; font: inherit; }
+.dt-speaker-merge .dt-actions { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 8px; }
+.dt-speaker-merge [role='status'] { margin-top: 7px; line-height: 1.6; }
