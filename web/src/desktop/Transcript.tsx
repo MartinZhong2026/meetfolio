@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Star, Pencil, Check, RotateCcw } from 'lucide-react';
 import type { Segment } from '../lib/types';
 import { effectiveText, fmtClock } from '../lib/format';
+import { useLanguage } from './language';
 export function TranscriptSegment({
   segment: s,
   prefix = '',
@@ -14,6 +15,7 @@ export function TranscriptSegment({
   onPlay?: (s: Segment) => void;
 }) {
   const [editing, setEditing] = useState(false);
+  const { t } = useLanguage();
   const [draft, setDraft] = useState('');
   const [speakerEdit, setSpeakerEdit] = useState(false);
   const [speaker, setSpeaker] = useState('');
@@ -26,17 +28,13 @@ export function TranscriptSegment({
       <time>{fmtClock(s.startMs)}</time>
       <div className="dt-bubble">
         <div className="dt-speaker">
-          <button className="dt-speaker-name" aria-label={`${s.speakerLabel || 'Unlabeled speaker'} · Correct speaker for segment ${s.seq}`} onClick={() => { setSpeaker(s.speakerLabel || ''); setSpeakerEdit(v => !v); }}>{s.speakerLabel || 'Unlabeled speaker'}</button>{' '}
+          <button className="dt-speaker-name" aria-label={`${s.speakerLabel || t('Unlabeled speaker')} · Correct speaker for segment ${s.seq}`} onClick={() => { setSpeaker(s.speakerLabel || ''); setSpeakerEdit(v => !v); }}>{s.speakerLabel || t('Unlabeled speaker')}</button>{' '}
           <span className="dt-source-label">
-            {s.source === 'demo'
-              ? 'DEMO'
-              : s.source === 'manual'
-                ? 'Manual entry'
-                : 'Local engine'}
+            {t(s.source === 'demo' ? 'DEMO' : s.source === 'manual' ? 'Manual entry' : 'Local engine')}
           </span>
         </div>
-        {!!s.reviewReasons?.length && <div className="dt-review-warning"><span>Listen & verify · {s.reviewReasons.map(r => r === 'overlap' ? 'overlapping voices' : r === 'short-turn' ? 'short turn' : 'phrase boundary').join(' · ')}</span><button className="dt-small-btn" onClick={() => onChange({ ...s, reviewReasons: [] })}>Mark reviewed</button></div>}
-        {speakerEdit && <div className="dt-speaker-correction"><label className="dt-label">Speaker for segment {s.seq}<input aria-label={`Speaker for segment ${s.seq}`} value={speaker} maxLength={200} onChange={e => setSpeaker(e.target.value)}/></label><button className="dt-small-btn" onClick={() => { onChange({ ...s, speakerLabel: speaker.trim() || null }); setSpeakerEdit(false); }}>Save speaker</button><button className="dt-small-btn" onClick={() => setSpeakerEdit(false)}>Cancel speaker change</button></div>}
+        {!!s.reviewReasons?.length && <div className="dt-review-warning"><span>Listen & verify · {s.reviewReasons.map(r => t(r === 'overlap' ? 'overlapping voices' : r === 'short-turn' ? 'short turn' : 'phrase boundary')).join(' · ')}</span><button className="dt-small-btn" onClick={() => onChange({ ...s, reviewReasons: [] })}>{t("Mark reviewed")}</button></div>}
+        {speakerEdit && <div className="dt-speaker-correction"><label className="dt-label">Speaker for segment {s.seq}<input aria-label={`Speaker for segment ${s.seq}`} value={speaker} maxLength={200} onChange={e => setSpeaker(e.target.value)}/></label><button className="dt-small-btn" onClick={() => { onChange({ ...s, speakerLabel: speaker.trim() || null }); setSpeakerEdit(false); }}>{t("Save speaker")}</button><button className="dt-small-btn" onClick={() => setSpeakerEdit(false)}>{t("Cancel speaker change")}</button></div>}
         {s.audio && <p className="dt-audio-source">Original audio · {fmtClock(s.audio.startMs)}–{fmtClock(s.audio.endMs)} <span> / {s.audio.recordingId.slice(0, 8)}</span></p>}
         {editing ? (
           <>
@@ -62,10 +60,10 @@ export function TranscriptSegment({
               }}
             >
               <Check size={12} />
-              Save edit
+              {t("Save edit")}
             </button>
             <button className="dt-small-btn" onClick={() => setEditing(false)}>
-              Cancel
+              {t("Cancel")}
             </button>
           </>
         ) : (
@@ -73,14 +71,14 @@ export function TranscriptSegment({
         )}
         {s.editedText !== null && (
           <details>
-            <summary>Compare original text</summary>
+            <summary>{t("Compare original text")}</summary>
             <p>{s.originalText}</p>
             <button
               className="dt-small-btn"
               onClick={() => onChange({ ...s, editedText: null })}
             >
               <RotateCcw size={12} />
-              Restore original
+              {t("Restore original")}
             </button>
           </details>
         )}
