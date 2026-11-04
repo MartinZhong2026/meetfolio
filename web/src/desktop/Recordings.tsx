@@ -47,12 +47,12 @@ export function Recordings({ interviewId, onRecoverTranscript }: { interviewId: 
     } finally { setWorking(false); }
   }
   const visible = all ? items : items.filter(item => item.interviewId === interviewId);
-  return <section className="dt-card" aria-label="Local WAV recordings">
-    <h2>Local WAV recordings</h2>
+  return <section className="dt-card" aria-label={t("Local WAV recordings")}>
+    <h2>{t("Local WAV recordings")}</h2>
     <p className="dt-muted">{t('Each capture is a separate 16 kHz mono WAV. Paused time is excluded. Interrupted files may be incomplete; listen and verify them before research use.')}</p>
     <p>{t('JSON backups and text exports do not contain audio. Export each WAV separately. Audio is local and unencrypted; combined audio backup is pending.')}</p>
     <div className="dt-actions">
-      <button className="dt-btn" disabled={working} onClick={() => void refresh()}>Refresh recordings</button>
+      <button className="dt-btn" disabled={working} onClick={() => void refresh()}>{t("Refresh recordings")}</button>
       <label><input type="checkbox" checked={all} onChange={e => setAll(e.target.checked)} /> {t('Show all local recordings (including restored or missing interviews)')}</label>
     </div>
     {!visible.length && <p>{t('No saved recordings found for')} {t(all ? 'this profile' : 'this interview')}. {t('Earlier transcripts and demo entries have no audio.')}</p>}
