@@ -254,7 +254,7 @@ export function LiveInterview({
                 }));
               }}
             >
-              Add manual segment
+              {t("Add manual segment")}
             </button>
           </details>
           <div className="dt-panel-footer">
