@@ -187,6 +187,10 @@ test('unsaved data, retry, backup restoration copies and two-tab safety', async 
     'Backup restored as copies',
   );
   await page.getByRole('button', { name: 'My interviews', exact: true }).click();
+  const restored = page.getByRole('region', { name: 'Saved interviews' })
+    .locator('.dt-library-row').filter({ hasText: '未保存测试 (restored copy)' });
+  await expect(restored).toBeVisible();
+  await restored.getByRole('button', { name: 'Open interview' }).click();
   await expect(page.getByLabel('Interview topic', { exact: true })).toHaveValue(
     '未保存测试 (restored copy)',
   );
