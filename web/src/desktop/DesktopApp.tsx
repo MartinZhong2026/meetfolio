@@ -97,8 +97,7 @@ function DesktopWorkspace({ standalone = false }: { standalone?: boolean }) {
       <main className="dt-blocked">
         <h1>{t("Use one window for editing")}</h1>
         <p>
-          Another window is using this notebook, or your browser does not support safe single-window writes. Use the latest
-          Chrome / Edge and close any duplicate windows before trying again.
+          {t('Another window is using this notebook, or your browser does not support safe single-window writes. Use the latest Chrome / Edge and close any duplicate windows before trying again.')}
         </p>
         <button className="dt-btn" onClick={() => location.reload()}>
           {t("Reload")}
@@ -108,13 +107,13 @@ function DesktopWorkspace({ standalone = false }: { standalone?: boolean }) {
   if (!store.book || !i)
     return (
       <main className="dt-blocked">
-        <h1>Meetfolio · Local research workspace</h1>
+        <h1>{t('Meetfolio · Local research workspace')}</h1>
         <p role={store.error ? 'alert' : 'status'}>
-          {store.error || 'Loading local records...'}
+          {store.error || t('Loading local records...')}
         </p>
         {store.error && (
           <button className="dt-btn" onClick={() => location.reload()}>
-            Retry loading
+            {t('Retry loading')}
           </button>
         )}
       </main>
@@ -134,11 +133,11 @@ function DesktopWorkspace({ standalone = false }: { standalone?: boolean }) {
     if (!i) return;
     if (importBusy) return;
     if (busy && stage !== 'live') {
-      setMessage('Pause or finish the recording before changing stages.');
+      setMessage(t('Pause or finish the recording before changing stages.'));
       return;
     }
     if (stage === 'live' && !i.title.trim()) {
-      setMessage('Enter a topic or load the clearly labeled fictional demo first.');
+      setMessage(t('Enter a topic or load the clearly labeled fictional demo first.'));
       return;
     }
     save({ stage, questions: questionsFromGuide(i.guide, i.questions) });
@@ -160,8 +159,8 @@ function DesktopWorkspace({ standalone = false }: { standalone?: boolean }) {
     setLibraryOpen(false);
     setMessage(
       synthetic
-        ? 'Fictional demo loaded; no real microphone or speech recognition used.'
-        : 'A new local interview was created.',
+        ? t('Fictional demo loaded; no real microphone or speech recognition used.')
+        : t('A new local interview was created.'),
     );
   }
   function deleteInterview(targetId: string) {
@@ -181,7 +180,7 @@ function DesktopWorkspace({ standalone = false }: { standalone?: boolean }) {
     setSettings(false);
     setImportOpen(false);
     setLibraryOpen(true);
-    setMessage('Interview removed from this notebook. Original WAV files were NOT deleted; find them under Local storage & backup info.');
+    setMessage(t('Interview removed from this notebook. Original WAV files were NOT deleted; find them under Local storage & backup info.'));
   }
   function openImport() {
     if (busy || !i) return;
@@ -192,7 +191,7 @@ function DesktopWorkspace({ standalone = false }: { standalone?: boolean }) {
       (i.referenceFiles?.length ?? 0) > 0 || i.recording !== 'idle';
     if (hasContent) {
       if (book.interviews.length >= 100) {
-        setMessage('100-interview limit reached. Export/backup and remove unused entries before importing a new file.');
+        setMessage(t('100-interview limit reached. Export/backup and remove unused entries before importing a new file.'));
         return;
       }
       const next = newInterview();
@@ -230,7 +229,9 @@ function DesktopWorkspace({ standalone = false }: { standalone?: boolean }) {
         };
       }
       await exportInterview(scoped, format, recordingId);
-      setMessage(`Exported ${recordingId ? 'individual recording ' + recordingId.slice(0, 8) : 'entire interview'} as ${format.toUpperCase()}.`);
+      setMessage(lang === 'zh-CN'
+        ? `已将${recordingId ? '录音 ' + recordingId.slice(0, 8) : '整份访谈'}导出为 ${format.toUpperCase()}。`
+        : `Exported ${recordingId ? 'individual recording ' + recordingId.slice(0, 8) : 'entire interview'} as ${format.toUpperCase()}.`);
     } catch {
       setMessage(t('Export failed. Retry or save a JSON backup first.'));
     } finally {
@@ -398,8 +399,8 @@ function DesktopWorkspace({ standalone = false }: { standalone?: boolean }) {
           </div>
           <div className="dt-top-status">
             <div className="dt-lang-switch" role="group" aria-label={t("Interface language")}>
-              <button type="button" lang="zh-CN" aria-pressed={lang === "zh-CN"} onClick={() => setLang("zh-CN")}>中文</button>
-              <button type="button" lang="en" aria-pressed={lang === "en"} onClick={() => setLang("en")}>EN</button>
+              <button type="button" lang="zh-CN" aria-pressed={lang === "zh-CN"} onClick={() => { setLang("zh-CN"); setMessage(""); }}>中文</button>
+              <button type="button" lang="en" aria-pressed={lang === "en"} onClick={() => { setLang("en"); setMessage(""); }}>EN</button>
             </div>
             <span
               data-testid="desktop-save-status"
@@ -480,8 +481,7 @@ function DesktopWorkspace({ standalone = false }: { standalone?: boolean }) {
             <div className="dt-alert" role="status">
               <b>{t("Recovery & missing-data notice")}</b>
               <p>
-                {i.interruption ||
-                  'Interrupted interview recovered. Review recent saved text; missing audio may not be recoverable.'}
+                {t(i.interruption || 'Interrupted interview recovered. Review recent saved text; missing audio may not be recoverable.')}
               </p>
             </div>
           )}
@@ -510,7 +510,7 @@ function DesktopWorkspace({ standalone = false }: { standalone?: boolean }) {
             </div>
           </section> : importOpen && !settings ? <AudioImport key={i.id} i={i} ready={runtime.ready} onBusy={setImportBusy} onClose={() => setImportOpen(false)} onDone={(segments, durationMs, name, partial) => {
             patch(i.id, current => appendImportedTranscript(current, segments, durationMs, name));
-            setLibraryOpen(false); setImportOpen(false); setMessage(partial ? `Recovered ${segments.length} confirmed segments. Transcription is unfinished; return to Import audio to resume.` : `Saved ${name} under My interviews: ${segments.length} transcript segments. Review this transcript or open it later from the saved interview list.`);
+            setLibraryOpen(false); setImportOpen(false); setMessage(lang === 'zh-CN' ? (partial ? `已恢复 ${segments.length} 个已确认片段，转录尚未完成，请返回「导入音频」继续。` : `已将 ${name} 保存到「我的访谈」，共 ${segments.length} 个转录片段。可立即复核或稍后从历史列表打开。`) : (partial ? `Recovered ${segments.length} confirmed segments. Transcription is unfinished; return to Import audio to resume.` : `Saved ${name} under My interviews: ${segments.length} transcript segments. Review this transcript or open it later from the saved interview list.`));
           }}/> : settings ? (
             <div className="dt-prep-grid">
               <ModelCard runtime={runtime} />
@@ -518,8 +518,7 @@ function DesktopWorkspace({ standalone = false }: { standalone?: boolean }) {
                 <div className="dt-eyebrow">{t("YOUR DATA / YOUR CHOICE")}</div>
                 <h2>{t("Backup & restore")}</h2>
                 <p className="dt-muted">
-                  Local records are neither encrypted nor synchronized. Export JSON
-                  to preserve interview details, categories, transcript edits and drafts.
+                  {t('Local records are neither encrypted nor synchronized. Export JSON to preserve interview details, categories, transcript edits and drafts.')}
                 </p>
                 <div className="dt-actions">
                   <button
@@ -539,14 +538,12 @@ function DesktopWorkspace({ standalone = false }: { standalone?: boolean }) {
                   </button>
                 </div>
                 <p className="dt-fine">
-                  Restoration creates local copies without overwriting existing interviews. Maximum JSON backup size:
-                  8 MB. JSON contains text and audio identifiers only, never WAV files. Export WAVs separately below. Store backups securely.
+                  {t('Restoration creates local copies without overwriting existing interviews. Maximum JSON backup size: 8 MB. JSON contains text and audio identifiers only, never WAV files. Export WAVs separately below. Store backups securely.')}
                 </p>
                 <div className="dt-feature">
                   <b>{t("Current recovery build limitations")}</b>
                   <p>
-                    Combined audio backup and PDF / DOCX extraction are not restored here. Previous
-                    server-backed AI experiments remain outside this local desktop recovery stage.
+                    {t('Combined audio backup and PDF / DOCX extraction are not restored here. Previous server-backed AI experiments remain outside this local desktop recovery stage.')}
                   </p>
                   {standalone ? (
                     <p>{t("The historical web server must be operated separately.")}</p>
@@ -595,7 +592,7 @@ function DesktopWorkspace({ standalone = false }: { standalone?: boolean }) {
             />
           )}
           <p className="dt-message" role="status" aria-live="polite">
-            {message}
+            {t(message)}
           </p>
           <footer className="dt-footer">
             <span>◆ Meetfolio Desktop · Local research workspace</span>
