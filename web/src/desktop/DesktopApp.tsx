@@ -250,7 +250,7 @@ export default function DesktopApp({
         <button type="button" className="dt-rail-toggle" aria-label={railCollapsed ? 'Expand navigation' : 'Collapse navigation'} title={railCollapsed ? 'Expand navigation' : 'Collapse navigation'} aria-expanded={!railCollapsed} onClick={() => setRailCollapsed(value => !value)}>
           {railCollapsed ? <PanelLeftOpen size={18}/> : <PanelLeftClose size={18}/>}
         </button>
-        <a className="dt-brand" aria-label="Meetfolio home" href={standalone ? '/' : '/desktop'}>
+        <a className="dt-brand" aria-label="Meetfolio RESEARCH WORKSPACE" href={standalone ? '/' : '/desktop'}>
           <span>
             <BookOpen size={22} />
           </span>
