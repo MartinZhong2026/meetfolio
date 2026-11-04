@@ -23,7 +23,7 @@ export interface LiveProps extends EditorProps, SegmentEditorProps {
   openSettings: () => void;
 }
 export interface ReviewProps extends EditorProps, SegmentEditorProps {
-  doExport: (format: 'txt' | 'md' | 'docx') => Promise<void>;
+  doExport: (format: 'txt' | 'md' | 'docx', recordingId?: string) => Promise<void>;
   exporting: boolean;
 }
 export function jump(target: string) {
