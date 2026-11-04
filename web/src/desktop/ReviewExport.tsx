@@ -52,7 +52,7 @@ export function ReviewExport({ i, save, segmentChange, doExport, exporting }: Re
         </div>
         {pageCount > 1 && <nav className="dt-transcript-pages" aria-label="Transcript pages"><button className="dt-small-btn" disabled={currentPage === 0} onClick={() => { setPage(currentPage - 1); document.querySelector('.dt-review-scroll')?.scrollTo(0,0); }}>Previous 100</button><span>{currentPage * 100 + 1}–{Math.min(visible.length, (currentPage + 1) * 100)} of {visible.length}</span><button className="dt-small-btn" disabled={currentPage === pageCount - 1} onClick={() => { setPage(currentPage + 1); document.querySelector('.dt-review-scroll')?.scrollTo(0,0); }}>Next 100</button></nav>}
         <div className="dt-actions dt-export-actions">
-          {(['txt', 'md', 'docx'] as const).map(format => <button className="dt-btn" key={format} disabled={exporting} onClick={() => void doExport(format)}>Export all · {format === 'md' ? 'Markdown' : format.toUpperCase()}</button>)}
+          {(['txt', 'md', 'docx'] as const).map(format => <button className="dt-btn" key={format} disabled={exporting} onClick={() => void doExport(format)}>Export {format === 'md' ? 'Markdown' : format.toUpperCase()}</button>)}
         </div>
         {sourceIds.length > 0 && <section className="dt-per-recording-export" aria-label="Export individual recordings">
           <h3>Export each recording separately</h3>
