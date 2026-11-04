@@ -1440,3 +1440,90 @@
 .dt-import-options > [role='status'] { border-top: 1px solid var(--dt-line); padding-top: 14px; }
 .dt-import-options > [role='status'] > p:first-child { font-size: 12px; font-weight: 600; }
 .dt-import-options progress { height: 7px; }
+
+/* Phase 5.1: accessible reading, transcript-first layout and reversible navigation. */
+.dt-app { --dt-ink: #24312a; --dt-muted: #526053; font-size: 15px; font-weight: 500; line-height: 1.6; }
+.dt-app .dt-muted, .dt-app .dt-fine, .dt-app .dt-panel-head small, .dt-app .dt-top { color: #4d5c51; }
+.dt-app .dt-nav { font-size: 14px; }
+.dt-app .dt-recents strong { font-size: 13px; font-weight: 650; }
+.dt-app .dt-recents small, .dt-app .dt-rail-bottom small { font-size: 11px; }
+.dt-app .dt-label { font-size: 13px; font-weight: 600; }
+.dt-app .dt-label input, .dt-app .dt-label textarea, .dt-app .dt-label select { font-size: 14px; }
+.dt-app .dt-consent, .dt-app .dt-fine, .dt-app .dt-muted { font-size: 13px; }
+.dt-app .dt-panel-head h2 { font-size: 16px; font-weight: 700; }
+.dt-app .dt-segment time, .dt-app .dt-review-scroll .dt-segment > time { font-size: 12px; }
+.dt-app .dt-speaker, .dt-app .dt-review-scroll .dt-speaker { font-size: 13px; font-weight: 700; }
+.dt-app .dt-bubble p:not(.dt-audio-source), .dt-app .dt-transcript-play, .dt-app .dt-review-scroll .dt-bubble > p:not(.dt-audio-source) {
+  font-size: 16px; line-height: 1.9; color: #253329; font-weight: 500; letter-spacing: .01em;
+}
+.dt-app .dt-audio-source, .dt-app .dt-source-label { font-size: 11px; color: #536658; }
+.dt-app .dt-note textarea, .dt-app .dt-note-editor textarea { font-size: 14px; line-height: 1.75; color: #27392e; }
+.dt-app .dt-note-editor .dt-btn, .dt-app .dt-small-btn { font-size: 12px !important; }
+.dt-app .dt-top, .dt-app .dt-stages button { font-size: 13px; }
+
+/* Sidebar retains icon-only navigation when collapsed. */
+.dt-rail-toggle {
+  align-self: flex-end; display: grid; place-items: center; border: 1px solid #d3ddd4;
+  background: #fff; color: #2b5340; padding: 8px; border-radius: 6px;
+  margin: 0 7px 11px; min-height: 36px; min-width: 36px;
+}
+.dt-rail-toggle:hover { background: #e3ebdf; }
+.dt-rail.collapsed { width: 68px; min-width: 68px; padding: 16px 6px; }
+.dt-rail.collapsed .dt-brand { padding: 0 0 16px; justify-content: center; }
+.dt-rail.collapsed .dt-brand > div,
+.dt-rail.collapsed .dt-nav-meta, .dt-rail.collapsed .dt-library-search,
+.dt-rail.collapsed .dt-recents, .dt-rail.collapsed .dt-nav-text,
+.dt-rail.collapsed .dt-rail-bottom > small,
+.dt-rail.collapsed .dt-rail-bottom > span,
+.dt-rail.collapsed .dt-rail-bottom > a { display: none; }
+.dt-rail.collapsed .dt-nav { justify-content: center; padding: 12px 0; gap: 0; }
+.dt-rail.collapsed .dt-rail-toggle { margin: 0 auto 13px; }
+.dt-rail.collapsed .dt-rail-bottom { margin-top: auto; }
+.dt-recents .dt-recent-row { display: flex; align-items: center; gap: 3px; border-radius: 7px; }
+.dt-recents .dt-recent-row > button:first-child { flex: 1; min-width: 0; width: auto; }
+.dt-recents .dt-recent-row .dt-delete-interview {
+  display: grid; place-items: center; flex: 0 0 32px; width: 32px; min-width: 32px;
+  min-height: 35px; border: 1px solid transparent; padding: 6px; color: #8b4b40;
+}
+.dt-recents .dt-delete-interview:hover { background: #fff0ec; border-color: #eed5d0; }
+.dt-delete-overlay { position: fixed; inset: 0; display: grid; place-items: center;
+  z-index: 60; background: #13221a88; padding: 24px; }
+.dt-delete-dialog { width: min(480px, 100%); padding: 25px; border-radius: 10px;
+  background: #fff; color: #273a2c; box-shadow: 0 22px 75px #1c241b55; }
+.dt-delete-dialog h2 { margin: 0 0 12px; font-size: 19px; }
+.dt-delete-dialog p { margin: 10px 0; line-height: 1.7; }
+.dt-delete-dialog .dt-actions { justify-content: flex-end; margin-top: 20px; }
+.dt-app .dt-danger { background: #8e3d32; color: white; border-color: #8e3d32; }
+.dt-app .dt-danger:hover { background: #742e29; }
+
+/* All setup components remain individually accessible in Advanced controls. */
+.dt-unified-setup { display: grid; gap: 10px; margin: 2px 0 20px; border: 1px solid #d3e2d6;
+  padding: 18px; border-radius: 8px; background: #f1f7ef; }
+.dt-unified-setup h3 { font-size: 17px; margin: 0; }
+.dt-unified-setup p { line-height: 1.65; }
+.dt-unified-setup .dt-btn { justify-self: start; }
+.dt-advanced-model { margin-top: 12px; }
+.dt-advanced-model summary { cursor: pointer; }
+
+/* The transcript occupies the largest useful width, with independent note/guide controls. */
+.dt-live-layout-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.dt-live-layout-controls .dt-small-btn[aria-pressed='true'] { background: #e2efe3; border-color: #a9c5af; }
+@media (min-width: 1051px) {
+  .stage-live:not(.view-settings):not(.view-import) .dt-columns.with-guide.with-notes {
+    grid-template-columns: minmax(180px, .58fr) minmax(440px, 2.6fr) minmax(215px, .82fr);
+  }
+  .stage-live:not(.view-settings):not(.view-import) .dt-columns.without-guide.with-notes {
+    grid-template-columns: minmax(420px, 1fr) minmax(215px, .38fr);
+  }
+  .stage-live:not(.view-settings):not(.view-import) .dt-columns.with-guide.without-notes {
+    grid-template-columns: minmax(180px, .45fr) minmax(460px, 2.6fr);
+  }
+  .stage-live:not(.view-settings):not(.view-import) .dt-columns.without-guide.without-notes {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 1050px) {
+  .stage-live .dt-columns { grid-template-columns: minmax(0, 1fr); height: auto; }
+  .stage-live .dt-columns > .dt-panel { height: min(600px, 75vh); grid-column: auto; }
+  .stage-live .dt-columns .dt-notes-panel { height: 400px; }
+}
