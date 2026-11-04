@@ -64,24 +64,24 @@ export function ModelCard({ runtime: r }: { runtime: ReturnType<typeof useLocalR
           <h3>{t("One-time offline setup")}</h3>
           <p>{t("One setup installs speech recognition, speaker separation and the optional Windows long-audio decoder. Models are downloaded only after you click. Audio is processed locally. The optional FFmpeg decoder is GPL-licensed and downloaded from its verified upstream source.")}</p>
           <button className="dt-btn primary" disabled={setupBusy || r.downloading || r.checking || allReady || !localRuntime()} onClick={() => void setupOffline()}>
-            <Download size={15}/>{allReady ? 'Offline transcription ready' : setupBusy ? 'Setting up offline transcription…' : 'Set up offline transcription'}
+            <Download size={15}/>{t(allReady ? 'Offline transcription ready' : setupBusy ? 'Setting up offline transcription…' : 'Set up offline transcription')}
           </button>
-          <p role="status" aria-live="polite">{setupPhase || (allReady ? 'Speech, speaker and decoder components are ready.' : 'The setup can be retried without deleting previously installed models.')}</p>
+          <p role="status" aria-live="polite">{setupPhase || t(allReady ? 'Speech, speaker and decoder components are ready.' : 'The setup can be retried without deleting previously installed models.')}</p>
           {setupError && <p className="dt-alert" role="alert">{setupError}</p>}
-          <p className="dt-fine">X-ASR: {r.ready ? 'Ready' : 'Not ready'} · Speakers: {speakerReady ? 'Ready' : 'Not ready'} · Long-audio decoder: {decoder.supported ? decoder.ready ? 'Ready' : 'Optional setup required' : 'Built in / not required'}</p>
+          <p className="dt-fine">{t('X-ASR:')} {t(r.ready ? 'Ready' : 'Not ready')} · {t('Speakers:')} {t(speakerReady ? 'Ready' : 'Not ready')} · {t('Long-audio decoder:')} {t(decoder.supported ? (decoder.ready ? 'Ready' : 'Optional setup required') : 'Built in / not required')}</p>
         </div>
-        <div><strong><ShieldCheck size={16}/>{r.ready ? r.model?.modelId : 'Local offline speech model'}</strong>
+        <div><strong><ShieldCheck size={16}/>{r.ready ? r.model?.modelId : t('Local offline speech model')}</strong>
           <span className={`dt-chip ${!r.ready ? 'warning' : ''}`}>
-            {r.checking ? 'Checking' : r.downloading || r.model?.state === 'downloading' ? 'Downloading'
+            {t(r.checking ? 'Checking' : r.downloading || r.model?.state === 'downloading' ? 'Downloading'
               : r.ready ? 'X-ASR Ready · Offline' : r.model?.state === 'loading' ? 'Initializing'
-              : r.model?.state === 'error' || r.model?.state === 'download-failed' ? 'Model installation failed' : 'Not installed / pending load'}
+              : r.model?.state === 'error' || r.model?.state === 'download-failed' ? 'Model installation failed' : 'Not installed / pending load')}
           </span></div>
-        <p>{r.ready ? 'Offline speech recognition confirmed; no cloud ASR service is used.'
+        <p>{t(r.ready ? 'Offline speech recognition confirmed; no cloud ASR service is used.'
           : r.model ? 'Transcription unavailable until the model is installed and initialized.'
-          : 'Download or import the free speech model in the installed desktop application.'}</p>
+          : 'Download or import the free speech model in the installed desktop application.')}</p>
         {(r.downloading || r.model?.state === 'downloading') && <>
           <progress aria-label={t("Model download progress")} value={progress ?? undefined} max={100} />
-          <small>{progress === null ? 'Download size unavailable' : `${progress}% · ${((r.model?.downloadedBytes ?? 0)/1048576).toFixed(1)} / ${((r.model?.totalBytes ?? 0)/1048576).toFixed(1)} MiB`}</small>
+          <small>{progress === null ? t('Download size unavailable') : `${progress}% · ${((r.model?.downloadedBytes ?? 0)/1048576).toFixed(1)} / ${((r.model?.totalBytes ?? 0)/1048576).toFixed(1)} MiB`}</small>
         </>}
         <details className="dt-advanced-model"><summary>{t("Advanced model controls · import / repair / cancel")}</summary><div className="dt-actions">
           <button className="dt-btn" onClick={() => void r.check()} disabled={r.checking || r.downloading}><RefreshCw size={12}/> {t("Check again")}</button>
