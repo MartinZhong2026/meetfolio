@@ -36,6 +36,7 @@ import { ReviewExport } from './ReviewExport';
 import { Recordings } from './Recordings';
 import { AudioImport } from './AudioImport';
 import { appendImportedTranscript } from './importTranscript';
+import { LanguageProvider, useLanguage } from './language';
 // Huninn is bundled by Vite for offline desktop use (no Google Fonts requests).
 import '@fontsource/huninn/400.css';
 import './desktop.css';
@@ -50,11 +51,11 @@ const headings: Record<Stage, [string, string]> = {
   live: ['Live interview', 'INTERVIEW'],
   review: ['Review & export', 'REVIEW'],
 };
-export default function DesktopApp({
-  standalone = false,
-}: {
-  standalone?: boolean;
-}) {
+export default function DesktopApp(props: { standalone?: boolean }) {
+  return <LanguageProvider><DesktopWorkspace {...props}/></LanguageProvider>;
+}
+function DesktopWorkspace({ standalone = false }: { standalone?: boolean }) {
+  const { t, lang, setLang } = useLanguage();
   const store = useNotebook();
   const [message, setMessage] = useState('');
   const [settings, setSettings] = useState(false);
@@ -94,13 +95,13 @@ export default function DesktopApp({
   if (store.readOnly)
     return (
       <main className="dt-blocked">
-        <h1>Use one window for editing</h1>
+        <h1>{t("Use one window for editing")}</h1>
         <p>
           Another window is using this notebook, or your browser does not support safe single-window writes. Use the latest
           Chrome / Edge and close any duplicate windows before trying again.
         </p>
         <button className="dt-btn" onClick={() => location.reload()}>
-          Reload
+          {t("Reload")}
         </button>
       </main>
     );
@@ -165,7 +166,7 @@ export default function DesktopApp({
   }
   function deleteInterview(targetId: string) {
     if (busy || store.error) {
-      setMessage('Finish recording and resolve local save errors before deleting.');
+      setMessage(t('Finish recording and resolve local save errors before deleting.'));
       return;
     }
     const target = book.interviews.find(entry => entry.id === targetId);
@@ -196,7 +197,7 @@ export default function DesktopApp({
       }
       const next = newInterview();
       store.update(current => ({ ...current, activeId: next.id, interviews: [next, ...current.interviews] }));
-      setMessage('A separate local interview has been created for the next recording. Previous transcripts remain in My interviews.');
+      setMessage(t('A separate local interview has been created for the next recording. Previous transcripts remain in My interviews.'));
     }
     setSettings(false);
     setLibraryOpen(false);
@@ -231,7 +232,7 @@ export default function DesktopApp({
       await exportInterview(scoped, format, recordingId);
       setMessage(`Exported ${recordingId ? 'individual recording ' + recordingId.slice(0, 8) : 'entire interview'} as ${format.toUpperCase()}.`);
     } catch {
-      setMessage('Export failed. Retry or save a JSON backup first.');
+      setMessage(t('Export failed. Retry or save a JSON backup first.'));
     } finally {
       setExporting(false);
     }
@@ -257,7 +258,7 @@ export default function DesktopApp({
         activeId: copies[0].id,
         interviews: [...copies, ...b.interviews],
       }));
-      setMessage('Backup restored as copies. Existing interviews were not overwritten.');
+      setMessage(t('Backup restored as copies. Existing interviews were not overwritten.'));
     } catch (e) {
       setMessage(
         e instanceof Error ? e.message : 'Backup not supported. Existing records were not changed.',
@@ -268,10 +269,10 @@ export default function DesktopApp({
   return (
     <div className={`dt-app stage-${i.stage}${settings ? ' view-settings' : importOpen ? ' view-import' : libraryOpen ? ' view-library' : ''}`}>
       <a className="dt-skip" href="#desktop-main">
-        Skip to main content
+        {t("Skip to main content")}
       </a>
-      <aside className={`dt-rail${railCollapsed ? ' collapsed' : ''}`} aria-label="Interview navigation">
-        <button type="button" className="dt-rail-toggle" aria-label={railCollapsed ? 'Expand navigation' : 'Collapse navigation'} title={railCollapsed ? 'Expand navigation' : 'Collapse navigation'} aria-expanded={!railCollapsed} onClick={() => setRailCollapsed(value => !value)}>
+      <aside className={`dt-rail${railCollapsed ? ' collapsed' : ''}`} aria-label={t("Interview navigation")}>
+        <button type="button" className="dt-rail-toggle" aria-label={t(railCollapsed ? 'Expand navigation' : 'Collapse navigation')} title={t(railCollapsed ? 'Expand navigation' : 'Collapse navigation')} aria-expanded={!railCollapsed} onClick={() => setRailCollapsed(value => !value)}>
           {railCollapsed ? <PanelLeftOpen size={18}/> : <PanelLeftClose size={18}/>}
         </button>
         <a className="dt-brand" aria-label={railCollapsed ? 'Meetfolio' : undefined} href={standalone ? '/' : '/desktop'}>
@@ -283,58 +284,58 @@ export default function DesktopApp({
             <small>RESEARCH WORKSPACE</small>
           </div>
         </a>
-        <p className="dt-nav-meta">Personal workspace</p>
+        <p className="dt-nav-meta">{t("Personal workspace")}</p>
         <button
           className={`dt-nav${!settings && !importOpen ? ' active' : ''}`}
-          aria-label="My interviews" title="My interviews"
+          aria-label={t("My interviews")} title={t("My interviews")}
           disabled={busy}
           onClick={() => {
             setSettings(false);
             setImportOpen(false);
             setLibraryOpen(true);
-            setMessage('Select any saved interview to open its transcript and exports.');
+            setMessage(t('Select any saved interview to open its transcript and exports.'));
           }}
         >
           <Grid2X2 size={17} />
-          <span className="dt-nav-text">My interviews</span>
+          <span className="dt-nav-text">{t("My interviews")}</span>
         </button>
         <button
           className={`dt-nav${importOpen && !settings ? ' active' : ''}`}
-          aria-label="Import audio" title="Import audio"
+          aria-label={t("Import audio")} title={t("Import audio")}
           disabled={busy}
           onClick={openImport}
         >
           <AudioLines size={18} />
-          <span className="dt-nav-text">Import audio</span>
+          <span className="dt-nav-text">{t("Import audio")}</span>
         </button>
         <button
           className="dt-nav"
-          aria-label="New interview" title="New interview"
+          aria-label={t("New interview")} title={t("New interview")}
           disabled={busy || book.interviews.length >= 100}
           onClick={() => create()}
         >
           <Plus size={18} />
-          <span className="dt-nav-text">New interview</span>
+          <span className="dt-nav-text">{t("New interview")}</span>
         </button>
         <button
           className="dt-nav"
-          aria-label="Memos & references" title="Memos & references"
+          aria-label={t("Memos & references")} title={t("Memos & references")}
           disabled={busy}
           onClick={() => {
             go('prepare');
-            setMessage('Research references are stored locally and are not participant speech.');
+            setMessage(t('Research references are stored locally and are not participant speech.'));
           }}
         >
           <FolderOpen size={17} />
-          <span className="dt-nav-text">Memos & references</span>
+          <span className="dt-nav-text">{t("Memos & references")}</span>
         </button>
-        <label className="dt-library-search"><span>Search local interviews</span>
-          <input aria-label="Search interviews" type="search" value={librarySearch}
-            onChange={e => setLibrarySearch(e.target.value)} placeholder="Title, transcript or notes" />
+        <label className="dt-library-search"><span>{t("Search local interviews")}</span>
+          <input aria-label={t("Search interviews")} type="search" value={librarySearch}
+            onChange={e => setLibrarySearch(e.target.value)} placeholder={t("Title, transcript or notes")} />
         </label>
         <button type="button" className="dt-recent-toggle" aria-controls="dt-recent-interviews" aria-expanded={recentOpen}
-          onClick={() => setRecentOpen(value => !value)} title={recentOpen ? 'Hide recent interviews' : 'Show recent interviews'}>
-          <span>Recent interviews</span><span aria-hidden="true">{book.interviews.length} {recentOpen ? '▴' : '▾'}</span>
+          onClick={() => setRecentOpen(value => !value)} title={t(recentOpen ? 'Hide recent interviews' : 'Show recent interviews')}>
+          <span>{t("Recent interviews")}</span><span aria-hidden="true">{book.interviews.length} {recentOpen ? '▴' : '▾'}</span>
         </button>
         <div className="dt-recents" id="dt-recent-interviews" hidden={!recentOpen}>
           {book.interviews.filter(item => {
@@ -354,10 +355,10 @@ export default function DesktopApp({
                   setLibraryOpen(false);
                 }}
               >
-                <strong>{item.synthetic ? 'DEMO · ' : ''}{item.title || 'Untitled interview'}</strong>
-                <small>{new Date(item.createdAt).toLocaleDateString('zh-CN')} · {stageLabels[item.stage]}</small>
+                <strong>{item.synthetic ? t('DEMO · ') : ''}{item.title || t('Untitled interview')}</strong>
+                <small>{new Date(item.createdAt).toLocaleDateString(lang)} · {t(stageLabels[item.stage])}</small>
               </button>
-              <button type="button" className="dt-delete-interview" title="Delete interview" aria-label={`Delete interview ${item.title || 'Untitled interview'}`} disabled={busy || !!store.error} onClick={() => setDeleteTarget(item.id)}>
+              <button type="button" className="dt-delete-interview" title={t("Delete interview")} aria-label={`${t('Delete interview')} ${item.title || t('Untitled interview')}`} disabled={busy || !!store.error} onClick={() => setDeleteTarget(item.id)}>
                 <Trash2 size={15}/>
               </button>
             </div>
@@ -366,12 +367,12 @@ export default function DesktopApp({
         <div className="dt-rail-bottom">
           <button
             className="dt-nav"
-            aria-label="Model & Settings" title="Model & Settings"
+            aria-label={t("Model & Settings")} title={t("Model & Settings")}
             disabled={busy}
             onClick={() => { setLibraryOpen(false); setImportOpen(false); setSettings((v) => !v); }}
           >
             <Settings2 size={16} />
-            <span className="dt-nav-text">Model & Settings</span>
+            <span className="dt-nav-text">{t("Model & Settings")}</span>
           </button>
           <small>
             {runtime.ready
@@ -380,35 +381,35 @@ export default function DesktopApp({
           </small>
           <span>
             <LockKeyhole size={12} />
-            Local records · No sign-in
+            {t("Local records · No sign-in")}
           </span>
           {standalone ? (
-            <small>The historical server prototype is a separate application</small>
+            <small>{t("The historical server prototype is a separate application")}</small>
           ) : (
-            <a href="/meetings">Open historical server prototype ↗</a>
+            <a href="/meetings">{t("Open historical server prototype ↗")}</a>
           )}
         </div>
       </aside>
       <div className="dt-workspace">
         <header className="dt-top">
           <div>
-            My research <span>/</span> Local interviews <span>/</span>{' '}
-            <b>{i.participant || 'Preparing'}</b>
+            {t('My research')} <span>/</span> {t('Local interviews')} <span>/</span>{' '}
+            <b>{i.participant || t('Preparing')}</b>
           </div>
           <div className="dt-top-status">
+            <div className="dt-lang-switch" role="group" aria-label={t("Interface language")}>
+              <button type="button" lang="zh-CN" aria-pressed={lang === "zh-CN"} onClick={() => setLang("zh-CN")}>中文</button>
+              <button type="button" lang="en" aria-pressed={lang === "en"} onClick={() => setLang("en")}>EN</button>
+            </div>
             <span
               data-testid="desktop-save-status"
               role="status"
               className={store.dirty ? 'warning' : ''}
             >
-              {store.error
-                ? 'Not saved'
-                : store.dirty
-                  ? 'Saving locally...'
-                  : 'Saved locally'}
+              {t(store.error ? 'Not saved' : store.dirty ? 'Saving locally...' : 'Saved locally')}
             </span>
-            <span>{online ? 'Local workspace' : 'Offline · Local workspace'}</span>
-            <span className="dt-avatar" aria-label="No account required">
+            <span>{t(online ? 'Local workspace' : 'Offline · Local workspace')}</span>
+            <span className="dt-avatar" aria-label={t('No account required')}>
               M
             </span>
           </div>
@@ -418,40 +419,40 @@ export default function DesktopApp({
             <div>
               <div className="dt-eyebrow">{headings[i.stage][1]}</div>
               <h1 ref={heading} tabIndex={-1}>
-                {libraryOpen ? 'Saved interviews' : settings ? 'Models & local storage' : importOpen ? 'Import a recording' : headings[i.stage][0]}
+                {t(libraryOpen ? 'Saved interviews' : settings ? 'Models & local storage' : importOpen ? 'Import a recording' : headings[i.stage][0])}
               </h1>
               <p>
-                {libraryOpen ? `${book.interviews.length} interviews stored locally` : i.title || 'New research interview'}{' '}
-                {i.participant ? `· Participant ${i.participant}` : ''}{' '}
+                {libraryOpen ? (lang === 'zh-CN' ? `本地保存 ${book.interviews.length} 份访谈` : `${book.interviews.length} interviews stored locally`) : i.title || t('New research interview')}{' '}
+                {i.participant ? (lang === 'zh-CN' ? `· 受访者 ${i.participant}` : `· Participant ${i.participant}`) : ''}{' '}
                 {i.synthetic
-                  ? '· DEMO / synthetic · Fictional data, no recording or AI calls'
+                  ? t('· DEMO / synthetic · Fictional data, no recording or AI calls')
                   : ''}
               </p>
             </div>
             <div className="dt-actions">
-              {libraryOpen ? <button className="dt-btn primary" disabled={busy} onClick={openImport}>Import another recording</button> : i.stage === 'prepare' ? (
+              {libraryOpen ? <button className="dt-btn primary" disabled={busy} onClick={openImport}>{t("Import another recording")}</button> : i.stage === 'prepare' ? (
                 <button className="dt-btn primary" onClick={() => go('live')}>
-                  Start live interview <ArrowRight size={15} />
+                  {t('Start live interview')} <ArrowRight size={15} />
                 </button>
               ) : i.stage === 'live' ? (
-                <button className="dt-btn" disabled={busy} onClick={() => go('prepare')}>View interview guide</button>
+                <button className="dt-btn" disabled={busy} onClick={() => go('prepare')}>{t("View interview guide")}</button>
               ) : (
                 <>
                   <button className="dt-btn" onClick={() => go('live')}>
-                    ← Back to transcript
+                    {t('← Back to transcript')}
                   </button>
                   <button
                     className="dt-btn primary"
                     disabled={exporting}
                     onClick={() => void doExport('md')}
                   >
-                    Export research record <ArrowDownToLine size={15} />
+                    {t('Export research record')} <ArrowDownToLine size={15} />
                   </button>
                 </>
               )}
             </div>
           </div>
-          {!libraryOpen && <nav className="dt-stages" aria-label="Interview stages">
+          {!libraryOpen && <nav className="dt-stages" aria-label={t("Interview stages")}>
             {(['prepare', 'live', 'review'] as Stage[]).map((stage, n) => (
               <button
                 key={stage}
@@ -460,7 +461,7 @@ export default function DesktopApp({
                 disabled={importBusy || (busy && stage !== 'live')}
               >
                 <span>0{n + 1}</span>
-                {stageLabels[stage]}
+                {t(stageLabels[stage])}
               </button>
             ))}
           </nav>}
@@ -468,27 +469,27 @@ export default function DesktopApp({
             <div className="dt-alert" role="alert">
               {store.error}
               <button className="dt-btn" onClick={store.retrySave}>
-                Retry saving
+                {t("Retry saving")}
               </button>
-              <button className="dt-btn" onClick={() => void backup(book).catch(() => setMessage('Backup failed. Please retry.'))}>
-                Export JSON backup now
+              <button className="dt-btn" onClick={() => void backup(book).catch(() => setMessage(t('Backup failed. Please retry.')))}>
+                {t("Export JSON backup now")}
               </button>
             </div>
           )}
           {(store.recovered || i.interruption) && (
             <div className="dt-alert" role="status">
-              <b>Recovery & missing-data notice</b>
+              <b>{t("Recovery & missing-data notice")}</b>
               <p>
                 {i.interruption ||
                   'Interrupted interview recovered. Review recent saved text; missing audio may not be recoverable.'}
               </p>
             </div>
           )}
-          {libraryOpen ? <section className="dt-card dt-library-view" aria-label="Saved interviews">
-            <h2>All saved interviews</h2>
-            <p className="dt-muted">These records remain on this device. Imported recordings are listed under their file names; older combined interviews may contain more than one WAV.</p>
-            <label className="dt-label">Find an interview
-              <input type="search" aria-label="Search saved interviews" value={librarySearch} onChange={event => setLibrarySearch(event.target.value)} placeholder="Search title, transcript or notes" />
+          {libraryOpen ? <section className="dt-card dt-library-view" aria-label={t("Saved interviews")}>
+            <h2>{t("All saved interviews")}</h2>
+            <p className="dt-muted">{t("These records remain on this device. Imported recordings are listed under their file names; older combined interviews may contain more than one WAV.")}</p>
+            <label className="dt-label">{t("Find an interview")}
+              <input type="search" aria-label={t("Search saved interviews")} value={librarySearch} onChange={event => setLibrarySearch(event.target.value)} placeholder={t("Search title, transcript or notes")} />
             </label>
             <div className="dt-library-list">
               {book.interviews.filter(entry => {
@@ -497,13 +498,13 @@ export default function DesktopApp({
               }).map(entry => {
                 const sources = new Set(entry.segments.map(segment => segment.audio?.recordingId).filter(Boolean));
                 return <div className="dt-library-row" key={entry.id}>
-                  <div><strong>{entry.synthetic ? 'DEMO · ' : ''}{entry.title || 'Untitled interview'}</strong>
-                    <small>{new Date(entry.createdAt).toLocaleString()} · {entry.segments.length} segments · {sources.size} linked recording(s)</small>
+                  <div><strong>{entry.synthetic ? t('DEMO · ') : ''}{entry.title || t('Untitled interview')}</strong>
+                    <small>{new Date(entry.createdAt).toLocaleString(lang)} · {entry.segments.length} {t('segments')} · {sources.size} {t('linked recording(s)')}</small>
                   </div>
                   <button className="dt-btn" disabled={busy} onClick={() => {
                     store.update(current => ({ ...current, activeId: entry.id }));
                     setLibraryOpen(false); setImportOpen(false); setSettings(false);
-                  }}>Open {entry.segments.length ? 'transcript' : 'interview'}</button>
+                  }}>{t(entry.segments.length ? 'Open transcript' : 'Open interview')}</button>
                 </div>;
               })}
             </div>
@@ -514,8 +515,8 @@ export default function DesktopApp({
             <div className="dt-prep-grid">
               <ModelCard runtime={runtime} />
               <section className="dt-card">
-                <div className="dt-eyebrow">YOUR DATA / YOUR CHOICE</div>
-                <h2>Backup & restore</h2>
+                <div className="dt-eyebrow">{t("YOUR DATA / YOUR CHOICE")}</div>
+                <h2>{t("Backup & restore")}</h2>
                 <p className="dt-muted">
                   Local records are neither encrypted nor synchronized. Export JSON
                   to preserve interview details, categories, transcript edits and drafts.
@@ -523,10 +524,10 @@ export default function DesktopApp({
                 <div className="dt-actions">
                   <button
                     className="dt-btn primary"
-                    onClick={() => void backup(book).catch(() => setMessage('Backup failed. Please retry.'))}
+                    onClick={() => void backup(book).catch(() => setMessage(t('Backup failed. Please retry.')))}
                   >
                     <ArrowDownToLine size={14} />
-                    Export JSON backup
+                    {t("Export JSON backup")}
                   </button>
                   <button
                     className="dt-btn"
@@ -534,7 +535,7 @@ export default function DesktopApp({
                     onClick={() => fileInput.current?.click()}
                   >
                     <Upload size={14} />
-                    Restore JSON backup
+                    {t("Restore JSON backup")}
                   </button>
                 </div>
                 <p className="dt-fine">
@@ -542,27 +543,27 @@ export default function DesktopApp({
                   8 MB. JSON contains text and audio identifiers only, never WAV files. Export WAVs separately below. Store backups securely.
                 </p>
                 <div className="dt-feature">
-                  <b>Current recovery build limitations</b>
+                  <b>{t("Current recovery build limitations")}</b>
                   <p>
                     Combined audio backup and PDF / DOCX extraction are not restored here. Previous
                     server-backed AI experiments remain outside this local desktop recovery stage.
                   </p>
                   {standalone ? (
-                    <p>The historical web server must be operated separately.</p>
+                    <p>{t("The historical web server must be operated separately.")}</p>
                   ) : (
                     <a className="dt-btn" href="/meetings">
-                      Open historical server prototype ↗
+                      {t("Open historical server prototype ↗")}
                     </a>
                   )}
                 </div>
               </section>
               <Recordings key={i.id} interviewId={i.id} onRecoverTranscript={segments => {
                 patch(i.id, current => appendImportedTranscript(current, segments, Math.max(0, ...segments.map(s => s.endMs))));
-                setMessage('Recovered saved import text. Existing segment edits were preserved.');
+                setMessage(t('Recovered saved import text. Existing segment edits were preserved.'));
               }}/>
             </div>
           ) : i.stage === 'prepare' ? (
-            <><section className="dt-source-choice" aria-label="Choose conversation source"><div><span className="dt-eyebrow">YOUR NEXT CONVERSATION</span><h2>Listen closely. Keep the context.</h2><p>Prepare your research, capture a live conversation, or work from an existing recording.</p></div><button className="dt-btn" disabled={busy} onClick={openImport}><AudioLines size={17}/>Import recording</button></section><Preparation
+            <><section className="dt-source-choice" aria-label={t("Choose conversation source")}><div><span className="dt-eyebrow">{t("YOUR NEXT CONVERSATION")}</span><h2>{t("Listen closely. Keep the context.")}</h2><p>{t("Prepare your research, capture a live conversation, or work from an existing recording.")}</p></div><button className="dt-btn" disabled={busy} onClick={openImport}><AudioLines size={17}/>{t("Import recording")}</button></section><Preparation
               i={i}
               save={save}
               setMessage={setMessage}
@@ -600,12 +601,12 @@ export default function DesktopApp({
             <span>◆ Meetfolio Desktop · Local research workspace</span>
             <button disabled={busy} onClick={() => { setLibraryOpen(false); setImportOpen(false); setSettings(true); }}>
               <ShieldCheck size={12} />
-              Local storage & backup info
+              {t("Local storage & backup info")}
             </button>
           </footer>
           <input
             className="dt-sr-only"
-            aria-label="Import local JSON backup"
+            aria-label={t("Import local JSON backup")}
             ref={fileInput}
             type="file"
             accept=".json,application/json"
@@ -615,12 +616,12 @@ export default function DesktopApp({
       </div>
       {pendingDelete && <div className="dt-delete-overlay">
         <div className="dt-delete-dialog" role="dialog" aria-modal="true" aria-labelledby="dt-delete-title" onKeyDown={e => { if (e.key === 'Escape') setDeleteTarget(null); }}>
-          <h2 id="dt-delete-title">Delete this interview?</h2>
-          <p><strong>{pendingDelete.title || 'Untitled interview'}</strong></p>
+          <h2 id="dt-delete-title">{t("Delete this interview?")}</h2>
+          <p><strong>{pendingDelete.title || t('Untitled interview')}</strong></p>
           <p>This removes the transcript, corrections and notes from the local notebook. It cannot be undone. Original WAV files remain in local storage and can be found in Local storage &amp; backup info.</p>
           <div className="dt-actions">
-            <button ref={cancelDeletionRef} className="dt-btn" onClick={() => setDeleteTarget(null)}>Cancel</button>
-            <button className="dt-btn dt-danger" disabled={busy || !!store.error} onClick={() => deleteInterview(pendingDelete.id)}>Delete interview</button>
+            <button ref={cancelDeletionRef} className="dt-btn" onClick={() => setDeleteTarget(null)}>{t("Cancel")}</button>
+            <button className="dt-btn dt-danger" disabled={busy || !!store.error} onClick={() => deleteInterview(pendingDelete.id)}>{t("Delete interview")}</button>
           </div>
         </div>
       </div>}
