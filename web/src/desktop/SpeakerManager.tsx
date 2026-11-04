@@ -29,7 +29,7 @@ export function SpeakerManager({ i, save }: { i: Interview; save: (change: Parti
   }
   return <section className="dt-speaker-manager" aria-label="Speaker management">
     <div className="dt-section-title"><Users size={16}/><h3>Speakers</h3><span>{speakers.length}</span></div>
-    <p className="dt-fine">Detected voice labels are estimates, not confirmed people. The same person may have several labels in a long interview. Listen to a few turns before merging. Rename or merge labels without re-transcribing.</p>
+    <p className="dt-fine">Detected voice labels are estimates, not confirmed people. The same person may have several labels in a long interview. Listen to a few turns before merging. Rename or merge labels without re-transcribing. Export a local JSON backup first if you need a way to restore earlier labels.</p>
     {unlabeledCount > 0 && <p className="dt-fine">{unlabeledCount} unlabeled turn(s) are not counted as speakers. Use the speaker control on an individual turn to assign them.</p>}
     {speakers.map((speaker, n) => <div className="dt-speaker-row" key={speaker}>
       <span className={`dt-speaker-avatar voice-${n % 4}`}>{String(n + 1).padStart(2, '0')}</span>
