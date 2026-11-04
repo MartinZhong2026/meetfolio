@@ -53,3 +53,34 @@ test('audio import from a fictional demo creates a separate real interview and p
   await page.getByRole('button', { name: /DEMO · Family caregiver interview/ }).click();
   await expect(page.getByLabel('Interview topic', { exact: true })).toHaveValue('Family caregiver interview');
 });
+
+test('duplicate detected voice labels can be merged after explicit review without changing transcript content', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Load fictional demo', exact: true }).click();
+  await page.getByRole('button', { name: 'Review & export', exact: false }).click();
+  const manager = page.getByRole('region', { name: 'Speaker management' });
+  const transcript = page.getByRole('region', { name: 'Review original text' });
+  await expect(manager.getByRole('button', { name: 'Merge Participant P07 into another speaker' })).toBeVisible();
+  const before = await transcript.locator('.dt-segment').allTextContents();
+  await manager.getByRole('button', { name: 'Merge Participant P07 into another speaker' }).click();
+  await manager.getByRole('combobox', { name: 'Target speaker for Participant P07' }).selectOption('Interviewer');
+  await manager.getByRole('button', { name: 'Review merge' }).click();
+  await expect(manager.getByRole('status')).toContainText('Original words, timestamps, WAV files and edits remain unchanged.');
+  await expect(manager.getByRole('button', { name: 'Confirm merge' })).toBeVisible();
+  await manager.getByRole('button', { name: 'Cancel merge' }).click();
+  await expect(manager.getByRole('button', { name: 'Merge Participant P07 into another speaker' })).toBeVisible();
+  await manager.getByRole('button', { name: 'Merge Participant P07 into another speaker' }).click();
+  await manager.getByRole('combobox', { name: 'Target speaker for Participant P07' }).selectOption('Interviewer');
+  await manager.getByRole('button', { name: 'Review merge' }).click();
+  await manager.getByRole('button', { name: 'Confirm merge' }).click();
+  await expect(manager.getByRole('heading', { name: 'Speakers' })).toBeVisible();
+  await expect(manager.getByRole('button', { name: 'Rename Participant P07 throughout interview' })).toHaveCount(0);
+  await expect(transcript.getByRole('button', { name: /Interviewer · Correct speaker for segment/ })).toHaveCount(5);
+  const after = await transcript.locator('.dt-segment').allTextContents();
+  expect(after.join(' ')).toContain('Interviewer');
+  expect(before.join(' ')).toContain('Participant P07');
+  await expect(page.getByTestId('desktop-save-status')).toHaveText('Saved locally');
+  await page.reload();
+  await expect(manager.getByRole('button', { name: 'Rename Participant P07 throughout interview' })).toHaveCount(0);
+  await expect(transcript.getByRole('button', { name: /Interviewer · Correct speaker for segment/ })).toHaveCount(5);
+});
