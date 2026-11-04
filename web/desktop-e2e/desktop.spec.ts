@@ -106,6 +106,7 @@ test('reference stages, offline notes and evidence, honest model state, edited e
     .fill('已核对，仍需后续验证。');
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
   await shot(page, 'review', info);
+  await page.locator('.dt-review-export-menu > summary').click();
   const download = page.waitForEvent('download');
   await page
     .getByRole('button', { name: 'Export Markdown', exact: true })
