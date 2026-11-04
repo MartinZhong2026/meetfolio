@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import AxeBuilder from '@axe-core/playwright';
 
 test('model setup installs offline components via one user action (mock native bridge)', async ({ page }) => {
   await page.addInitScript(() => {
@@ -30,10 +31,15 @@ test('navigation collapses without losing icon-button accessibility; deletion re
   await page.goto('/');
   await page.getByLabel('Interview topic', { exact: true }).fill('Disposable local conversation');
   await expect(page.getByTestId('desktop-save-status')).toHaveText('Saved locally');
+  // The expanded brand link must derive its accessible name from visible text.
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
   await page.getByRole('button', { name: 'Collapse navigation' }).click();
   await expect(page.getByRole('button', { name: 'Expand navigation' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Meetfolio', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'New interview', exact: true })).toBeVisible();
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
   await page.getByRole('button', { name: 'Expand navigation' }).click();
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
   await page.getByRole('button', { name: 'Delete interview Disposable local conversation' }).click();
   const dialog = page.getByRole('dialog', { name: 'Delete this interview?' });
   await expect(dialog).toBeVisible();
