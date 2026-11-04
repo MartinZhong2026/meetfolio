@@ -13,6 +13,7 @@ export function ReviewExport({ i, save, segmentChange, doExport, exporting }: Re
   const [important, setImportant] = useState(false);
   const [speaker, setSpeaker] = useState('');
   const [needsReview, setNeedsReview] = useState(false);
+  const [inspectorOpen, setInspectorOpen] = useState(true);
   const [page, setPage] = useState(0);
   const deferredQuery = useDeferredValue(query);
   const [pendingSource, setPendingSource] = useState<number | null>(null);
@@ -49,9 +50,16 @@ export function ReviewExport({ i, save, segmentChange, doExport, exporting }: Re
   ));
   const unlinkedCount = i.segments.filter(segment => !segment.audio).length;
   return (
-    <div className="dt-review-grid">
+    <div className={`dt-review-grid ${inspectorOpen ? "with-inspector" : "focus-transcript"}`}>
       <section className="dt-card dt-review-sources" aria-label="Review original text">
-        <div className="dt-review-title"><div><div className="dt-eyebrow">CONVERSATION RECORD</div><h2>Transcript <span>{i.segments.length} segments</span></h2></div><FileText size={20}/></div>
+        <div className="dt-review-title"><div><div className="dt-eyebrow">CONVERSATION RECORD</div><h2>Transcript <span>{i.segments.length} segments</span></h2></div>
+          <div className="dt-review-layout-actions">
+            <FileText size={17} aria-hidden="true"/>
+            <button type="button" className="dt-small-btn" aria-controls="dt-review-inspector" aria-expanded={inspectorOpen} onClick={() => setInspectorOpen(value => !value)}>
+              {inspectorOpen ? 'Hide review panel' : 'Show review panel'}
+            </button>
+          </div>
+        </div>
         <div className="dt-transcript-toolbar"><label><Search size={15}/><input aria-label="Search transcript" type="search" placeholder="Find in transcript…" value={query} onChange={e => { setQuery(e.target.value); setPage(0); }}/></label>
           <select aria-label="Filter transcript by speaker" value={activeSpeaker} onChange={e => { setSpeaker(e.target.value); setPage(0); }}><option value="">All speakers</option>{[...new Set(i.segments.map(s => s.speakerLabel).filter(Boolean))].map(label => <option key={label} value={label!}>{label}</option>)}</select>
           <button className="dt-small-btn" aria-pressed={important} onClick={() => { setImportant(v => !v); setPage(0); }}><Star size={13}/>Marked</button>
@@ -68,9 +76,11 @@ export function ReviewExport({ i, save, segmentChange, doExport, exporting }: Re
           {!i.segments.length && !i.notes.length && <p className="dt-empty">No text yet. Add manual transcript entries or notes in the live workspace.</p>}
         </div>
         {pageCount > 1 && <nav className="dt-transcript-pages" aria-label="Transcript pages"><button className="dt-small-btn" disabled={currentPage === 0} onClick={() => { setPage(currentPage - 1); document.querySelector('.dt-review-scroll')?.scrollTo(0,0); }}>Previous 100</button><span>{currentPage * 100 + 1}–{Math.min(visible.length, (currentPage + 1) * 100)} of {visible.length}</span><button className="dt-small-btn" disabled={currentPage === pageCount - 1} onClick={() => { setPage(currentPage + 1); document.querySelector('.dt-review-scroll')?.scrollTo(0,0); }}>Next 100</button></nav>}
-        <div className="dt-actions dt-export-actions">
-          {(['txt', 'md', 'docx'] as const).map(format => <button className="dt-btn" key={format} disabled={exporting} onClick={() => void doExport(format)}>Export {format === 'md' ? 'Markdown' : format.toUpperCase()}</button>)}
-        </div>
+        <details className="dt-review-export-menu">
+          <summary>Export options <span>TXT · Markdown · DOCX · Original WAV</span></summary>
+          <div className="dt-actions dt-export-actions">
+            {(['txt', 'md', 'docx'] as const).map(format => <button className="dt-btn" key={format} disabled={exporting} onClick={() => void doExport(format)}>Export {format === 'md' ? 'Markdown' : format.toUpperCase()}</button>)}
+          </div>
         {sourceIds.length > 0 && <section className="dt-per-recording-export" aria-label="Export individual recordings">
           <h3>Export each recording separately</h3>
           <p className="dt-fine">Each file below includes only transcript segments linked to that original WAV. Notes and unlinked manual segments stay in the complete interview export.</p>
@@ -84,8 +94,9 @@ export function ReviewExport({ i, save, segmentChange, doExport, exporting }: Re
           {unlinkedCount > 0 && <p className="dt-fine">{unlinkedCount} segment(s) lack a WAV link; available in Export all only.</p>}
           <p role="status" aria-live="polite">{wavMessage}</p>
         </section>}
+        </details>
       </section>
-      <section className="dt-card dt-review-inspector" aria-label="Manual evidence review">
+      {inspectorOpen && <section id="dt-review-inspector" className="dt-card dt-review-inspector" aria-label="Manual evidence review">
         <SpeakerManager key={i.id} i={i} save={save}/>
         <div className="dt-eyebrow">RESEARCH DESK</div>
         <h2>Evidence & interpretation</h2>
@@ -100,7 +111,7 @@ export function ReviewExport({ i, save, segmentChange, doExport, exporting }: Re
           <textarea aria-label="Researcher review notes" value={i.reviewText} maxLength={200000} onChange={e => save({ reviewText: e.target.value })} placeholder="Write interpretations, verification findings and outstanding questions..." />
         </label>
         <p className="dt-fine">Evidence anchors are preserved in Markdown / JSON; DOCX and TXT retain timestamps.</p>
-      </section>
+      </section>}
     </div>
   );
 }
