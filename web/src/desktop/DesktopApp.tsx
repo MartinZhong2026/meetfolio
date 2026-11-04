@@ -57,6 +57,7 @@ export default function DesktopApp({
   const [message, setMessage] = useState('');
   const [settings, setSettings] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const [libraryOpen, setLibraryOpen] = useState(false);
   const [importBusy, setImportBusy] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [online, setOnline] = useState(navigator.onLine);
@@ -139,6 +140,7 @@ export default function DesktopApp({
     save({ stage, questions: questionsFromGuide(i.guide, i.questions) });
     setSettings(false);
     setImportOpen(false);
+    setLibraryOpen(false);
     requestAnimationFrame(() => stage === 'live' ? document.querySelector<HTMLElement>('.dt-live-title')?.focus() : heading.current?.focus());
   }
   function create(synthetic = false) {
@@ -151,6 +153,7 @@ export default function DesktopApp({
     }));
     setSettings(false);
     setImportOpen(false);
+    setLibraryOpen(false);
     setMessage(
       synthetic
         ? 'Fictional demo loaded; no real microphone or speech recognition used.'
@@ -173,20 +176,27 @@ export default function DesktopApp({
     setDeleteTarget(null);
     setSettings(false);
     setImportOpen(false);
+    setLibraryOpen(true);
     setMessage('Interview removed from this notebook. Original WAV files were NOT deleted; find them under Local storage & backup info.');
   }
   function openImport() {
     if (busy || !i) return;
-    if (i.synthetic) {
+    // Never mix a new audio file into an already populated interview by default.
+    // Leave an empty draft in place so a cancelled picker does not create another blank entry.
+    const hasContent = i.synthetic || !!i.title.trim() || i.segments.length > 0 ||
+      i.notes.length > 0 || !!i.guide.trim() || !!i.reference.trim() ||
+      (i.referenceFiles?.length ?? 0) > 0 || i.recording !== 'idle';
+    if (hasContent) {
       if (book.interviews.length >= 100) {
-        setMessage('The interview limit is reached. Import audio into a non-demo interview.');
+        setMessage('100-interview limit reached. Export/backup and remove unused entries before importing a new file.');
         return;
       }
       const next = newInterview();
       store.update(current => ({ ...current, activeId: next.id, interviews: [next, ...current.interviews] }));
-      setMessage('A separate local interview was created for audio import. The fictional demo is preserved.');
+      setMessage('A separate local interview has been created for the next recording. Previous transcripts remain in My interviews.');
     }
     setSettings(false);
+    setLibraryOpen(false);
     setImportOpen(true);
   }
   async function finish() {
@@ -198,14 +208,25 @@ export default function DesktopApp({
     }
     requestAnimationFrame(() => heading.current?.focus());
   }
-  async function doExport(format: 'txt' | 'md' | 'docx') {
+  async function doExport(format: 'txt' | 'md' | 'docx', recordingId?: string) {
     if (!i) return;
     setExporting(true);
     try {
-      await exportInterview(i, format);
-      setMessage(
-        `Exported ${format.toUpperCase()}. Keep research files secure.`,
-      );
+      let scoped = i;
+      if (recordingId) {
+        const related = i.segments.filter(segment => segment.audio?.recordingId === recordingId);
+        if (!related.length) throw new Error('No segments for selected recording.');
+        const sources = Array.from(new Set(i.segments.map(segment => segment.audio?.recordingId).filter(Boolean)));
+        const sourceNumber = sources.indexOf(recordingId) + 1;
+        scoped = { ...i,
+          title: `${i.title || 'Interview'} — Recording ${sourceNumber} (${recordingId.slice(0, 8)})`,
+          segments: related.map(segment => ({ ...segment, startMs: segment.audio!.startMs, endMs: segment.audio!.endMs })),
+          notes: [], draftNote: '', manualDraft: '', reviewText: '', guide: '', questions: [],
+          reference: '', referenceFiles: [], interruption: null,
+        };
+      }
+      await exportInterview(scoped, format, recordingId);
+      setMessage(`Exported ${recordingId ? 'individual recording ' + recordingId.slice(0, 8) : 'entire interview'} as ${format.toUpperCase()}.`);
     } catch {
       setMessage('Export failed. Retry or save a JSON backup first.');
     } finally {
@@ -267,7 +288,8 @@ export default function DesktopApp({
           onClick={() => {
             setSettings(false);
             setImportOpen(false);
-            setMessage('Recent local interviews are listed below.');
+            setLibraryOpen(true);
+            setMessage('Select any saved interview to open its transcript and exports.');
           }}
         >
           <Grid2X2 size={17} />
@@ -323,6 +345,7 @@ export default function DesktopApp({
                   store.update((b) => ({ ...b, activeId: item.id }));
                   setSettings(false);
                   setImportOpen(false);
+                  setLibraryOpen(false);
                 }}
               >
                 <strong>{item.synthetic ? 'DEMO · ' : ''}{item.title || 'Untitled interview'}</strong>
@@ -339,7 +362,7 @@ export default function DesktopApp({
             className="dt-nav"
             aria-label="Model & Settings" title="Model & Settings"
             disabled={busy}
-            onClick={() => setSettings((v) => !v)}
+            onClick={() => { setLibraryOpen(false); setImportOpen(false); setSettings((v) => !v); }}
           >
             <Settings2 size={16} />
             <span className="dt-nav-text">Model & Settings</span>
@@ -389,10 +412,10 @@ export default function DesktopApp({
             <div>
               <div className="dt-eyebrow">{headings[i.stage][1]}</div>
               <h1 ref={heading} tabIndex={-1}>
-                {settings ? 'Models & local storage' : importOpen ? 'Import a recording' : headings[i.stage][0]}
+                {libraryOpen ? 'Saved interviews' : settings ? 'Models & local storage' : importOpen ? 'Import a recording' : headings[i.stage][0]}
               </h1>
               <p>
-                {i.title || 'New research interview'}{' '}
+                {libraryOpen ? `${book.interviews.length} interviews stored locally` : i.title || 'New research interview'}{' '}
                 {i.participant ? `· Participant ${i.participant}` : ''}{' '}
                 {i.synthetic
                   ? '· DEMO / synthetic · Fictional data, no recording or AI calls'
@@ -400,7 +423,7 @@ export default function DesktopApp({
               </p>
             </div>
             <div className="dt-actions">
-              {i.stage === 'prepare' ? (
+              {libraryOpen ? <button className="dt-btn primary" disabled={busy} onClick={openImport}>Import another recording</button> : i.stage === 'prepare' ? (
                 <button className="dt-btn primary" onClick={() => go('live')}>
                   Start live interview <ArrowRight size={15} />
                 </button>
@@ -422,7 +445,7 @@ export default function DesktopApp({
               )}
             </div>
           </div>
-          <nav className="dt-stages" aria-label="Interview stages">
+          {!libraryOpen && <nav className="dt-stages" aria-label="Interview stages">
             {(['prepare', 'live', 'review'] as Stage[]).map((stage, n) => (
               <button
                 key={stage}
@@ -434,7 +457,7 @@ export default function DesktopApp({
                 {stageLabels[stage]}
               </button>
             ))}
-          </nav>
+          </nav>}
           {store.error && (
             <div className="dt-alert" role="alert">
               {store.error}
@@ -455,9 +478,32 @@ export default function DesktopApp({
               </p>
             </div>
           )}
-          {importOpen && !settings ? <AudioImport key={i.id} i={i} ready={runtime.ready} onBusy={setImportBusy} onClose={() => setImportOpen(false)} onDone={(segments, durationMs, name, partial) => {
+          {libraryOpen ? <section className="dt-card dt-library-view" aria-label="Saved interviews">
+            <h2>All saved interviews</h2>
+            <p className="dt-muted">These records remain on this device. Imported recordings are listed under their file names; older combined interviews may contain more than one WAV.</p>
+            <label className="dt-label">Find an interview
+              <input type="search" aria-label="Search saved interviews" value={librarySearch} onChange={event => setLibrarySearch(event.target.value)} placeholder="Search title, transcript or notes" />
+            </label>
+            <div className="dt-library-list">
+              {book.interviews.filter(entry => {
+                const query = librarySearch.trim().toLocaleLowerCase();
+                return !query || [entry.title, entry.participant, ...entry.segments.map(seg => seg.editedText ?? seg.originalText), ...entry.notes.map(note => note.content)].some(v => v.toLocaleLowerCase().includes(query));
+              }).map(entry => {
+                const sources = new Set(entry.segments.map(segment => segment.audio?.recordingId).filter(Boolean));
+                return <div className="dt-library-row" key={entry.id}>
+                  <div><strong>{entry.synthetic ? 'DEMO · ' : ''}{entry.title || 'Untitled interview'}</strong>
+                    <small>{new Date(entry.createdAt).toLocaleString()} · {entry.segments.length} segments · {sources.size} linked recording(s)</small>
+                  </div>
+                  <button className="dt-btn" disabled={busy} onClick={() => {
+                    store.update(current => ({ ...current, activeId: entry.id }));
+                    setLibraryOpen(false); setImportOpen(false); setSettings(false);
+                  }}>Open {entry.segments.length ? 'transcript' : 'interview'}</button>
+                </div>;
+              })}
+            </div>
+          </section> : importOpen && !settings ? <AudioImport key={i.id} i={i} ready={runtime.ready} onBusy={setImportBusy} onClose={() => setImportOpen(false)} onDone={(segments, durationMs, name, partial) => {
             patch(i.id, current => appendImportedTranscript(current, segments, durationMs, name));
-            setImportOpen(false); setMessage(partial ? `Recovered ${segments.length} confirmed segments. Transcription is unfinished; return to Import audio to resume.` : `Imported ${name}: ${segments.length} transcript segments. Review text, speaker labels and audio before using them as evidence.`);
+            setLibraryOpen(false); setImportOpen(false); setMessage(partial ? `Recovered ${segments.length} confirmed segments. Transcription is unfinished; return to Import audio to resume.` : `Saved ${name} under My interviews: ${segments.length} transcript segments. Review this transcript or open it later from the saved interview list.`);
           }}/> : settings ? (
             <div className="dt-prep-grid">
               <ModelCard runtime={runtime} />
