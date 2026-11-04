@@ -25,6 +25,9 @@ export function LiveInterview({
   segmentChange,
 }: LiveProps) {
   const [search, setSearch] = useState('');
+  // The live transcript is the primary surface; guide and notes are optional panels.
+  const [guideVisible, setGuideVisible] = useState(false);
+  const [notesVisible, setNotesVisible] = useState(true);
   const manual = i.manualDraft;
   return (
     <>
@@ -125,8 +128,13 @@ export function LiveInterview({
           )}
         </div>
       )}
-      <div className="dt-columns" data-testid="desktop-columns">
-        <section className="dt-panel" aria-label="Interview guide">
+      <div className="dt-live-layout-controls" role="group" aria-label="Live workspace layout">
+        <button className="dt-small-btn" aria-pressed={guideVisible} onClick={() => setGuideVisible(value => !value)}>{guideVisible ? 'Hide interview guide' : 'Show interview guide'}</button>
+        <button className="dt-small-btn" aria-pressed={notesVisible} onClick={() => setNotesVisible(value => !value)}>{notesVisible ? 'Hide research notes' : 'Show research notes'}</button>
+        <button className="dt-small-btn" onClick={() => { setGuideVisible(false); setNotesVisible(false); }}>Focus on transcript</button>
+      </div>
+      <div className={`dt-columns ${guideVisible ? 'with-guide' : 'without-guide'} ${notesVisible ? 'with-notes' : 'without-notes'}`} data-testid="desktop-columns">
+        {guideVisible && <section className="dt-panel" aria-label="Interview guide">
           <div className="dt-panel-head">
             <h2>Interview guide</h2>
             <small>
@@ -174,7 +182,7 @@ export function LiveInterview({
               </details>
             )}
           </div>
-        </section>
+        </section>}
         <section className="dt-panel dt-transcript-panel" aria-label="Live transcription">
           <div className="dt-panel-head">
             <h2>Live transcription</h2>
@@ -257,7 +265,7 @@ export function LiveInterview({
             Timestamps and original text are preserved <span>☆ Mark important</span>
           </div>
         </section>
-        <section className="dt-panel dt-notes-panel" aria-label="Research notes">
+        {notesVisible && <section className="dt-panel dt-notes-panel" aria-label="Research notes">
           <div className="dt-panel-head">
             <h2>Research notes</h2>
             <small>{i.notes.length} notes</small>
@@ -415,7 +423,7 @@ export function LiveInterview({
             </button>
             <small>Drafts are saved locally</small>
           </div>
-        </section>
+        </section>}
       </div>
     </>
   );
