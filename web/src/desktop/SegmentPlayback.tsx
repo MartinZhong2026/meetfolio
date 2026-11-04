@@ -17,10 +17,10 @@ export const SegmentPlayback = forwardRef<SegmentPlaybackHandle, { interviewId: 
     return () => { instance.dispose(); player.current = null; };
   }, [interviewId]);
   useImperativeHandle(ref, () => ({ play: segment => { void player.current?.play(segment); } }), []);
-  return <div className="dt-playback" aria-label="Segment audio playback" role="region">
+  return <div className="dt-playback" aria-label={t("Segment audio playback")} role="region">
     <p role="status" aria-live="polite">{state.status === 'idle' ? t('Select linked transcript text to hear the original audio.') : `${t('segment')} ${state.seq} · ${t(state.status)}`}</p>
     {state.segmentId && <>
-      <progress aria-label="Segment audio progress" value={state.positionMs} max={state.durationMs || 1}/>
+      <progress aria-label={t("Segment audio progress")} value={state.positionMs} max={state.durationMs || 1}/>
       <span className="dt-fine"> {fmtClock(state.positionMs)} / {fmtClock(state.durationMs)}</span>
       <div className="dt-actions">
         {state.status === 'playing' && <button className="dt-small-btn" onClick={() => player.current?.pause()}>{t("Pause audio")}</button>}
