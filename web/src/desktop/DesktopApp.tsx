@@ -573,7 +573,7 @@ export default function DesktopApp({
               runtime={runtime}
               finish={finish}
               patch={patch}
-              openSettings={() => setSettings(true)}
+              openSettings={() => { setLibraryOpen(false); setImportOpen(false); setSettings(true); }}
               segmentChange={segmentChange}
             />
           ) : (
@@ -592,7 +592,7 @@ export default function DesktopApp({
           </p>
           <footer className="dt-footer">
             <span>◆ Meetfolio Desktop · Local research workspace</span>
-            <button disabled={busy} onClick={() => setSettings(true)}>
+            <button disabled={busy} onClick={() => { setLibraryOpen(false); setImportOpen(false); setSettings(true); }}>
               <ShieldCheck size={12} />
               Local storage & backup info
             </button>
